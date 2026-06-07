@@ -1,24 +1,15 @@
-const DEFAULT_PRODUCTION_API_URL = "https://api.ultimalinea.com.ar";
-
-const resolvePublicApiUrl = () =>
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "production"
-    ? DEFAULT_PRODUCTION_API_URL
-    : "http://localhost:8080");
-
-export const getApiBaseUrl = () => {
-  const baseUrl = resolvePublicApiUrl();
-  if (typeof window !== "undefined") {
-    const isDevelopment = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    if (isDevelopment && baseUrl.startsWith("http")) {
-      return "/api-proxy";
-    }
+/** API integrada en Next.js (migración desde Go). Usar /api como base. */
+const resolveApiBaseUrl = (): string => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
   }
-  return baseUrl;
+  return "/api";
 };
 
-/** URL del backend sin proxy. Usar para upload (FormData); el proxy no reenvía bien multipart. */
-export const getDirectApiUrl = () => resolvePublicApiUrl();
+export const getApiBaseUrl = () => resolveApiBaseUrl();
+
+/** Misma base que getApiBaseUrl; la API integrada maneja multipart en el mismo origen. */
+export const getDirectApiUrl = () => resolveApiBaseUrl();
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "DELETE";
