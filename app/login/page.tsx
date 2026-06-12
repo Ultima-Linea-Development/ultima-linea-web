@@ -101,13 +101,12 @@ export default function LoginPage() {
               </Label>
             </Div>
 
-            {error && (
-              <Alert variant="destructive">
-                <Typography variant="body2" color="destructive">
-                  {error}
-                </Typography>
-              </Alert>
-            )}
+            <Alert
+              open={!!error}
+              message={error}
+              variant="destructive"
+              onClose={() => setError("")}
+            />
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Iniciando sesión..." : "Iniciar Sesión"}

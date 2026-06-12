@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import Typography from "@/components/ui/Typography";
+import SortableImageGrid, { type SortableImageItem } from "@/components/ui/SortableImageGrid";
 
 const ACCEPT_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const MAX_FILES = 20;
@@ -94,6 +95,21 @@ export default function ImageUploadDropzone({
     onFilesChange(files.filter((_, i) => i !== index));
   };
 
+  const previewItems: SortableImageItem[] = files.map((file, index) => ({
+    id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
+    src: previewUrls[index],
+    alt: file.name,
+  }));
+
+  const handlePreviewReorder = (items: SortableImageItem[]) => {
+    const fileById = new Map(previewItems.map((item, index) => [item.id, files[index]]));
+    onFilesChange(
+      items
+        .map((item) => fileById.get(item.id))
+        .filter((file): file is File => file !== undefined)
+    );
+  };
+
   return (
     <div className={cn("space-y-3", className)}>
       <div
@@ -141,34 +157,14 @@ export default function ImageUploadDropzone({
       {files.length > 0 && (
         <div className="space-y-2">
           <Typography variant="body2" color="muted">
-            Vista previa
+            Vista previa. Arrastrá para reordenar antes de guardar.
           </Typography>
-          <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 list-none p-0 m-0">
-            {previewUrls.map((url, index) => (
-              <li
-                key={url}
-                className="relative aspect-square border border-input overflow-hidden bg-muted"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={url}
-                  className="w-full h-full object-cover"
-                  alt="Vista previa"
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeFile(index);
-                  }}
-                  className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white text-xs flex items-center justify-center hover:bg-black/80"
-                  aria-label="Quitar imagen"
-                >
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
+          <SortableImageGrid
+            items={previewItems}
+            onReorder={handlePreviewReorder}
+            onRemove={removeFile}
+            itemClassName="h-24 w-24 sm:h-28 sm:w-28"
+          />
         </div>
       )}
     </div>

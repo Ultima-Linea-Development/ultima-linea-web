@@ -14,6 +14,10 @@ export const WHATSAPP_CONSULT_URL = buildWhatsAppConsultUrl(
   "Hola, quisiera hacer una consulta."
 );
 
+export const WHATSAPP_SIZE_GUIDE_URL = buildWhatsAppConsultUrl(
+  "Hola, estoy entre dos talles y necesito ayuda para elegir el mío."
+);
+
 const WHATSAPP_ARREPENTIMIENTO_MESSAGE =
   "Hola, quiero ejercer mi derecho de arrepentimiento sobre mi compra. Por favor indiquen cómo proceder y qué datos necesitan.";
 

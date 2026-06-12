@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureIndexes, getProductsCollection } from "@/lib/server/db";
+import { ProductDocument } from "@/lib/server/models";
 import { jsonError } from "@/lib/server/auth-middleware";
 import { findProductByIdOrSlugOrSku, toProductResponse } from "@/lib/server/products";
 
@@ -10,7 +11,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     await ensureIndexes();
 
     const { id } = await context.params;
-    const collection = await getProductsCollection();
+    const collection = await getProductsCollection<ProductDocument>();
     const product = await findProductByIdOrSlugOrSku(collection, id, true);
 
     if (!product) {

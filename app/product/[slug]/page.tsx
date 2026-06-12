@@ -17,13 +17,7 @@ import { Button } from "@/components/ui/button";
 import ProductFeatureHighlights, {
   type ProductFeatureItem,
 } from "@/components/ui/ProductFeatureHighlights";
-import {
-  HiOutlineCalendarDays,
-  HiOutlineShieldCheck,
-  HiOutlineSparkles,
-  HiOutlineTag,
-  HiOutlineTrophy,
-} from "react-icons/hi2";
+import ProductTags, { type ProductTagItem } from "@/components/ui/ProductTags";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -94,7 +88,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
       id: "team",
       label: "Equipo",
       value: product.team,
-      Icon: HiOutlineShieldCheck,
     });
   }
   if (product.league) {
@@ -102,7 +95,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
       id: "league",
       label: "Liga",
       value: product.league,
-      Icon: HiOutlineTrophy,
     });
   }
   if (product.season) {
@@ -110,35 +102,28 @@ export default async function ProductPage({ params }: ProductPageProps) {
       id: "season",
       label: "Temporada",
       value: product.season,
-      Icon: HiOutlineCalendarDays,
-    });
-  }
-  if (product.category) {
-    featureItems.push({
-      id: "category",
-      label: "Categoría",
-      value: categoryDisplay[product.category],
-      Icon: HiOutlineTag,
-    });
-  }
-  if (shirtType) {
-    featureItems.push({
-      id: "shirt-type",
-      label: "Tipo",
-      value: labelShirtType(shirtType),
-      Icon: HiOutlineSparkles,
     });
   }
 
+  const productTags = [
+    product.category
+      ? { id: "category" as const, label: categoryDisplay[product.category] }
+      : null,
+    shirtType
+      ? { id: "shirt-type" as const, label: labelShirtType(shirtType) }
+      : null,
+  ].filter((tag): tag is ProductTagItem => tag !== null);
+
   return (
-    <Container>
-      <Box className="grid grid-cols-1 gap-8 md:mt-8 md:grid-cols-[1.5fr_1fr] lg:grid-cols-[2fr_1fr] md:grid-rows-[auto_1fr]">
+    <Container className="pt-0">
+      <Box className="grid grid-cols-1 gap-8 md:grid-cols-[1.5fr_1fr] lg:grid-cols-[2fr_1fr] md:grid-rows-[auto_1fr]">
         <Box
           display="flex"
           direction="col"
           gap="2"
-          className="order-1 min-w-0 md:col-start-2 md:row-start-1"
+          className="order-1 min-w-0 pt-4 md:col-start-2 md:row-start-1 md:pt-6"
         >
+          {productTags.length > 0 && <ProductTags tags={productTags} />}
           <Typography
             variant="h1"
             uppercase
@@ -180,21 +165,32 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </Div>
           )}
 
-          <Box
-            display="flex"
-            direction="col"
-            gap="3"
+          <div
             className={cn(
-              "w-full",
+              "grid w-full grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2",
               product.description &&
                 !hasProductAttributes &&
                 "border-t border-border pt-4"
             )}
           >
             <Button
+              variant="ctaOutline"
+              size="cta"
+              className="w-full min-w-0 whitespace-normal leading-tight"
+              asChild
+            >
+              <Link
+                href="/guia-de-talles"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Guía de talles
+              </Link>
+            </Button>
+            <Button
               variant="ctaSolid"
-              size="xl"
-              className="w-full"
+              size="cta"
+              className="w-full min-w-0 whitespace-normal leading-tight"
               asChild
             >
               <a
@@ -205,16 +201,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 Quiero este producto
               </a>
             </Button>
-            <Button variant="ctaOutline" size="xl" className="w-full" asChild>
-              <Link
-                href="/guia-de-talles"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Guía de talles
-              </Link>
-            </Button>
-          </Box>
+          </div>
         </Box>
       </Box>
     </Container>

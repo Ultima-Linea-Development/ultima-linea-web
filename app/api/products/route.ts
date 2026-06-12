@@ -3,6 +3,7 @@ import { ensureIndexes, getProductsCollection } from "@/lib/server/db";
 import { ProductDocument, productFromDoc } from "@/lib/server/models";
 import { jsonError } from "@/lib/server/auth-middleware";
 import { ensureProductSlugs, toProductResponse } from "@/lib/server/products";
+import { buildProductSizeFilter } from "@/lib/admin-catalog-filters";
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     if (team) filter.team = { $regex: team, $options: "i" };
     if (league) filter.league = league;
     if (category) filter.category = category;
-    if (size) filter.sizes = { $in: [size] };
+    if (size) Object.assign(filter, buildProductSizeFilter(size));
 
     const collection = await getProductsCollection<ProductDocument>();
     const total = await collection.countDocuments(filter);

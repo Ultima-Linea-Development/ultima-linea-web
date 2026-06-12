@@ -6,14 +6,18 @@ import Typography from "@/components/ui/Typography";
 import Form from "@/components/ui/Form";
 import Label from "@/components/ui/Label";
 import Input from "@/components/ui/Input";
+import Textarea from "@/components/ui/Textarea";
 import Div from "@/components/ui/Div";
-import Alert from "@/components/ui/Alert";
+import { InlineAlert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/button";
-import Icon from "@/components/ui/Icons";
 import ImageUploadDropzone from "@/components/ui/ImageUploadDropzone";
-import type { Product, UpdateProductRequest } from "@/lib/api";
-import { adminUploadApi } from "@/lib/api";
+import SortableImageGrid, { type SortableImageItem } from "@/components/ui/SortableImageGrid";
+import ProductOptionSelect from "@/components/admin/ProductOptionSelect";
+import type { Product, ProductOptionsResponse, UpdateProductRequest } from "@/lib/api";
+import { adminUploadApi, productsApi } from "@/lib/api";
 import { generateSlug, normalizeShirtType, type ShirtType } from "@/lib/utils";
+import { formFieldClassName } from "@/lib/form-field-classes";
+import { validateRequiredProductFields } from "@/lib/product-form-validation";
 import {
   productToRows,
   rowsToPayload,
@@ -31,6 +35,21 @@ const SHIRT_TYPE_OPTIONS: Array<{ value: ShirtType; label: string }> = [
   { value: "fan", label: "Fan" },
   { value: "player", label: "Jugador" },
 ];
+
+function resolveOptionValue(
+  value: string,
+  options: string[]
+): { value: string; isCustom: boolean } {
+  const trimmed = value.trim();
+  if (!trimmed) return { value: "", isCustom: false };
+
+  const match = options.find(
+    (option) => option.trim().toLocaleLowerCase() === trimmed.toLocaleLowerCase()
+  );
+  if (match) return { value: match, isCustom: false };
+
+  return { value: trimmed, isCustom: true };
+}
 
 type AdminProductEditFormProps = {
   product: Product;
@@ -53,10 +72,13 @@ export default function AdminProductEditForm({
   const [description, setDescription] = useState(product.description ?? "");
   const [team, setTeam] = useState(product.team ?? "");
   const [league, setLeague] = useState(product.league ?? "");
+  const [isCustomTeam, setIsCustomTeam] = useState(false);
+  const [isCustomLeague, setIsCustomLeague] = useState(false);
   const [season, setSeason] = useState(product.season ?? "");
   const [price, setPrice] = useState(String(product.price));
   const [sizeRows, setSizeRows] = useState<SizeStockRow[]>(() => productToRows(product));
   const [inventoryError, setInventoryError] = useState("");
+  const [fieldError, setFieldError] = useState("");
   const [category, setCategory] = useState<Product["category"]>(product.category ?? "club");
   const [shirtType, setShirtType] = useState<ShirtType>(
     () => normalizeShirtType(product.type) ?? "fan"
@@ -65,31 +87,84 @@ export default function AdminProductEditForm({
   const [currentImageUrls, setCurrentImageUrls] = useState<string[]>(product.image_urls ?? []);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [imageError, setImageError] = useState("");
+  const [productOptions, setProductOptions] = useState<ProductOptionsResponse>({
+    teams: [],
+    leagues: [],
+    sizes: [],
+  });
 
   useEffect(() => {
-    queueMicrotask(() => {
-      setCurrentImageUrls(product.image_urls ?? []);
-      setNewFiles([]);
-      setImageError("");
-      setSizeRows(productToRows(product));
-      setInventoryError("");
-      setShirtType(normalizeShirtType(product.type) ?? "fan");
-    });
-  }, [product]);
+    let isMounted = true;
+
+    const loadProductOptions = async () => {
+      const response = await productsApi.getOptions();
+      if (isMounted && response.data) {
+        setProductOptions(response.data);
+      }
+    };
+
+    void loadProductOptions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const teamValue = product.team ?? "";
+    const leagueValue = product.league ?? "";
+    const resolvedTeam = resolveOptionValue(teamValue, productOptions.teams);
+    const resolvedLeague = resolveOptionValue(leagueValue, productOptions.leagues);
+
+    setName(product.name);
+    setDescription(product.description ?? "");
+    setTeam(resolvedTeam.value);
+    setLeague(resolvedLeague.value);
+    setIsCustomTeam(resolvedTeam.isCustom);
+    setIsCustomLeague(resolvedLeague.isCustom);
+    setSeason(product.season ?? "");
+    setPrice(String(product.price));
+    setSizeRows(productToRows(product));
+    setInventoryError("");
+    setFieldError("");
+    setCategory(product.category ?? "club");
+    setShirtType(normalizeShirtType(product.type) ?? "fan");
+    setIsActive(product.is_active);
+    setCurrentImageUrls(product.image_urls ?? []);
+    setNewFiles([]);
+    setImageError("");
+  }, [product, productOptions]);
 
   const removeCurrentImage = (index: number) => {
     setCurrentImageUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const currentImageItems: SortableImageItem[] = currentImageUrls.map((url, index) => ({
+    id: `${url}-${index}`,
+    src: url,
+  }));
+
+  const handleCurrentImagesReorder = (items: SortableImageItem[]) => {
+    setCurrentImageUrls(items.map((item) => item.src));
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setImageError("");
     setInventoryError("");
+    setFieldError("");
+
+    const requiredError = validateRequiredProductFields({ name, team, league, season });
+    if (requiredError) {
+      setFieldError(requiredError);
+      return;
+    }
+
     const priceNum = Number(price);
     if (Number.isNaN(priceNum) || priceNum < 0) return;
-    const inventory = rowsToPayload(sizeRows);
+    const inventory = rowsToPayload(sizeRows, { allowEmpty: true });
     if (!inventory) {
-      setInventoryError("Completá al menos un talle con stock válido (número ≥ 0).");
+      setInventoryError("Revisá el stock de cada talle (número ≥ 0).");
       return;
     }
 
@@ -121,9 +196,9 @@ export default function AdminProductEditForm({
     const payload: UpdateProductRequest = {
       name: name.trim(),
       description: description.trim() || undefined,
-      team: team.trim() || undefined,
-      league: league.trim() || undefined,
-      season: season.trim() || undefined,
+      team: team.trim(),
+      league: league.trim(),
+      season: season.trim(),
       price: priceNum,
       sizes: inventory.sizes,
       stock_by_sizes: inventory.stock_by_sizes,
@@ -138,85 +213,92 @@ export default function AdminProductEditForm({
   return (
     <Box display="flex" direction="col" gap="4">
       <Form onSubmit={handleSubmit} spacing="md">
+        <Div spacing="md">
+          <Label htmlFor="edit-name" display="block" spacing="sm">
+            <Typography variant="body2" mb={1}>
+              Nombre *
+            </Typography>
+            <Input
+              id="edit-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </Label>
+        </Div>
+
+        <Div spacing="md">
+          <Label htmlFor="edit-description" display="block" spacing="sm">
+            <Typography variant="body2" mb={1}>
+              Descripción
+            </Typography>
+            <Textarea
+              id="edit-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </Label>
+        </Div>
+
         <Box display="flex" gap="4" className="flex-wrap">
           <Div spacing="md" className="flex-1 min-w-[200px]">
-            <Label htmlFor="edit-name" display="block" spacing="sm">
-              <Typography variant="body2" mb={1}>
-                Nombre *
-              </Typography>
-              <Input
-                id="edit-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </Label>
+            <ProductOptionSelect
+              id="edit-team"
+              label="Equipo"
+              value={team}
+              options={productOptions.teams}
+              isCustom={isCustomTeam}
+              onChange={setTeam}
+              onCustomChange={setIsCustomTeam}
+              customPlaceholder="Ingresá el equipo"
+              disabled={isSubmitting}
+              required
+            />
           </Div>
           <Div spacing="md" className="flex-1 min-w-[200px]">
-            <Label htmlFor="edit-description" display="block" spacing="sm">
-              <Typography variant="body2" mb={1}>
-                Descripción
-              </Typography>
-              <Input
-                id="edit-description"
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </Label>
+            <ProductOptionSelect
+              id="edit-league"
+              label="Liga"
+              value={league}
+              options={productOptions.leagues}
+              isCustom={isCustomLeague}
+              onChange={setLeague}
+              onCustomChange={setIsCustomLeague}
+              customPlaceholder="Ingresá la liga"
+              disabled={isSubmitting}
+              required
+            />
           </Div>
         </Box>
+
         <Box display="flex" gap="4" className="flex-wrap">
-          <Div spacing="md" className="flex-1 min-w-[120px]">
-            <Label htmlFor="edit-team" display="block" spacing="sm">
-              <Typography variant="body2" mb={1}>
-                Equipo
-              </Typography>
-              <Input
-                id="edit-team"
-                type="text"
-                value={team}
-                onChange={(e) => setTeam(e.target.value)}
-              />
-            </Label>
-          </Div>
-          <Div spacing="md" className="flex-1 min-w-[120px]">
-            <Label htmlFor="edit-league" display="block" spacing="sm">
-              <Typography variant="body2" mb={1}>
-                Liga
-              </Typography>
-              <Input
-                id="edit-league"
-                type="text"
-                value={league}
-                onChange={(e) => setLeague(e.target.value)}
-              />
-            </Label>
-          </Div>
           <Div spacing="md" className="flex-1 min-w-[120px]">
             <Label htmlFor="edit-season" display="block" spacing="sm">
               <Typography variant="body2" mb={1}>
-                Temporada
+                Temporada *
               </Typography>
               <Input
                 id="edit-season"
                 type="text"
                 value={season}
                 onChange={(e) => setSeason(e.target.value)}
+                placeholder="24/25"
+                required
               />
             </Label>
           </Div>
           <Div spacing="md" className="flex-1 min-w-[120px]">
             <Label htmlFor="edit-category" display="block" spacing="sm">
               <Typography variant="body2" mb={1}>
-                Categoría
+                Categoría *
               </Typography>
               <select
                 id="edit-category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as Product["category"])}
-                className="w-full py-2 px-4 bg-gray-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                required
+                className={formFieldClassName}
               >
                 {CATEGORY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -229,13 +311,14 @@ export default function AdminProductEditForm({
           <Div spacing="md" className="flex-1 min-w-[120px]">
             <Label htmlFor="edit-shirt-type" display="block" spacing="sm">
               <Typography variant="body2" mb={1}>
-                Tipo
+                Tipo *
               </Typography>
               <select
                 id="edit-shirt-type"
                 value={shirtType}
                 onChange={(e) => setShirtType(e.target.value as ShirtType)}
-                className="w-full py-2 px-4 bg-gray-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                required
+                className={formFieldClassName}
               >
                 {SHIRT_TYPE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -246,8 +329,9 @@ export default function AdminProductEditForm({
             </Label>
           </Div>
         </Box>
+
         <Box display="flex" gap="4" className="flex-wrap items-end">
-          <Div spacing="md" className="min-w-[100px]">
+          <Div spacing="md" className="flex-1 min-w-[120px]">
             <Label htmlFor="edit-price" display="block" spacing="sm">
               <Typography variant="body2" mb={1}>
                 Precio *
@@ -262,15 +346,7 @@ export default function AdminProductEditForm({
               />
             </Label>
           </Div>
-          <Div spacing="md" className="min-w-0 w-full max-w-md">
-            <ProductSizeStockFields
-              idPrefix="edit"
-              rows={sizeRows}
-              onRowsChange={setSizeRows}
-              disabled={isSubmitting}
-            />
-          </Div>
-          <Div spacing="md" className="flex items-center gap-2">
+          <Div spacing="md" className="flex items-center gap-2 pb-2">
             <input
               id="edit-is-active"
               type="checkbox"
@@ -285,6 +361,17 @@ export default function AdminProductEditForm({
         </Box>
 
         <Div spacing="md">
+          <ProductSizeStockFields
+            idPrefix="edit"
+            rows={sizeRows}
+            onRowsChange={setSizeRows}
+            disabled={isSubmitting}
+            sizeOptions={productOptions.sizes}
+            minRows={0}
+          />
+        </Div>
+
+        <Div spacing="md">
           <Typography variant="body2" mb={1}>
             Imágenes actuales
           </Typography>
@@ -293,40 +380,37 @@ export default function AdminProductEditForm({
               No hay imágenes. Agregá nuevas abajo.
             </Typography>
           ) : (
-            <Box display="flex" gap="2" className="flex-wrap">
-              {currentImageUrls.map((url, index) => (
-                <div key={`${url}-${index}`} className="relative h-20 w-20 shrink-0 border border-border overflow-hidden bg-muted">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" className="h-full w-full object-cover" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Quitar imagen"
-                    className="absolute top-0 right-0 h-6 w-6 bg-black/60 text-white hover:bg-black/80"
-                    onClick={() => removeCurrentImage(index)}
-                  >
-                    <Icon name="close" className="size-3" />
-                  </Button>
-                </div>
-              ))}
-            </Box>
+            <>
+              {currentImageUrls.length > 0 && (
+                <>
+                  <Typography variant="caption" color="muted" mb={1}>
+                    Arrastrá las imágenes para cambiar el orden de aparición.
+                  </Typography>
+                  <SortableImageGrid
+                    items={currentImageItems}
+                    onReorder={handleCurrentImagesReorder}
+                    onRemove={removeCurrentImage}
+                    showOrderBadge
+                  />
+                </>
+              )}
+            </>
           )}
         </Div>
 
         <Div spacing="md">
           <Typography variant="body2" mb={1}>
-            Agregar o reemplazar imágenes
+            Agregar o reemplazar imágenes *
           </Typography>
           <ImageUploadDropzone files={newFiles} onFilesChange={setNewFiles} />
         </Div>
 
-        {(error || imageError || inventoryError) && (
-          <Alert variant="destructive">
+        {(error || fieldError || imageError || inventoryError) && (
+          <InlineAlert variant="destructive">
             <Typography variant="body2" color="destructive">
-              {error || imageError || inventoryError}
+              {error || fieldError || imageError || inventoryError}
             </Typography>
-          </Alert>
+          </InlineAlert>
         )}
         <Box display="flex" gap="2">
           <Button type="submit" disabled={isSubmitting}>

@@ -3,6 +3,7 @@ import { ensureIndexes, getProductsCollection } from "@/lib/server/db";
 import { ProductDocument, productFromDoc } from "@/lib/server/models";
 import { jsonError } from "@/lib/server/auth-middleware";
 import { toProductResponse } from "@/lib/server/products";
+import { buildProductSizeFilter } from "@/lib/admin-catalog-filters";
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,8 +22,7 @@ export async function GET(request: NextRequest) {
     if (Number.isNaN(perPage) || perPage < 1) perPage = 10;
     if (perPage > 50) perPage = 50;
 
-    const searchFilter: Record<string, unknown> = {
-      is_active: true,
+    const textMatch = {
       $or: [
         { name: { $regex: q, $options: "i" } },
         { description: { $regex: q, $options: "i" } },
@@ -37,9 +37,16 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get("league");
     const size = searchParams.get("size");
 
-    if (category) searchFilter.category = category;
-    if (league) searchFilter.league = league;
-    if (size) searchFilter.sizes = { $in: [size] };
+    const searchFilter: Record<string, unknown> = { is_active: true, ...textMatch };
+
+    if (category || league || size) {
+      const andFilters: Record<string, unknown>[] = [textMatch];
+      if (category) andFilters.push({ category });
+      if (league) andFilters.push({ league });
+      if (size) andFilters.push(buildProductSizeFilter(size));
+      delete searchFilter.$or;
+      searchFilter.$and = andFilters;
+    }
 
     const collection = await getProductsCollection<ProductDocument>();
     const total = await collection.countDocuments(searchFilter);

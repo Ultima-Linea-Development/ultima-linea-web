@@ -8,16 +8,26 @@ import Typography from "@/components/ui/Typography";
 import Form from "@/components/ui/Form";
 import Label from "@/components/ui/Label";
 import Input from "@/components/ui/Input";
+import Textarea from "@/components/ui/Textarea";
 import Div from "@/components/ui/Div";
 import Alert from "@/components/ui/Alert";
 import { Button } from "@/components/ui/button";
 import AdminShell from "@/components/admin/AdminShell";
 import ImageUploadDropzone from "@/components/ui/ImageUploadDropzone";
 import { isAdmin, getUserFromToken, clearAuth, getToken } from "@/lib/auth";
-import { adminProductsApi, adminUploadApi, type CreateProductRequest } from "@/lib/api";
+import {
+  adminProductsApi,
+  adminUploadApi,
+  productsApi,
+  type CreateProductRequest,
+  type ProductOptionsResponse,
+} from "@/lib/api";
 import { generateSlug } from "@/lib/utils";
+import { formFieldClassName } from "@/lib/form-field-classes";
+import { validateRequiredProductFields } from "@/lib/product-form-validation";
 import { emptySizeStockRow, rowsToPayload, type SizeStockRow } from "@/lib/product-inventory";
 import ProductSizeStockFields from "@/components/admin/ProductSizeStockFields";
+import ProductOptionSelect from "@/components/admin/ProductOptionSelect";
 
 const CATEGORY_OPTIONS: Array<{ value: CreateProductRequest["category"]; label: string }> = [
   { value: "club", label: "Club" },
@@ -37,11 +47,18 @@ export default function AdminAddProductPage() {
   const [description, setDescription] = useState("");
   const [team, setTeam] = useState("");
   const [league, setLeague] = useState("");
+  const [isCustomTeam, setIsCustomTeam] = useState(false);
+  const [isCustomLeague, setIsCustomLeague] = useState(false);
   const [season, setSeason] = useState("");
   const [price, setPrice] = useState("");
   const [sizeRows, setSizeRows] = useState<SizeStockRow[]>(() => [emptySizeStockRow()]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [category, setCategory] = useState<CreateProductRequest["category"]>("club");
+  const [productOptions, setProductOptions] = useState<ProductOptionsResponse>({
+    teams: [],
+    leagues: [],
+    sizes: [],
+  });
 
   useEffect(() => {
     const checkAuth = () => {
@@ -60,6 +77,24 @@ export default function AdminAddProductPage() {
     checkAuth();
   }, [router]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProductOptions = async () => {
+      const response = await productsApi.getOptions();
+
+      if (isMounted && response.data) {
+        setProductOptions(response.data);
+      }
+    };
+
+    loadProductOptions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
@@ -69,6 +104,13 @@ export default function AdminAddProductPage() {
     const token = getToken();
     if (!token) {
       setError("Sesión expirada. Volvé a iniciar sesión.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const requiredError = validateRequiredProductFields({ name, team, league, season });
+    if (requiredError) {
+      setError(requiredError);
       setIsSubmitting(false);
       return;
     }
@@ -116,9 +158,9 @@ export default function AdminAddProductPage() {
       const payload: CreateProductRequest = {
         name: name.trim(),
         description: description.trim() || undefined,
-        team: team.trim() || undefined,
-        league: league.trim() || undefined,
-        season: season.trim() || undefined,
+        team: team.trim(),
+        league: league.trim(),
+        season: season.trim(),
         price: priceNum,
         sizes: inventory.sizes,
         stock_by_sizes: inventory.stock_by_sizes,
@@ -139,6 +181,8 @@ export default function AdminAddProductPage() {
       setDescription("");
       setTeam("");
       setLeague("");
+      setIsCustomTeam(false);
+      setIsCustomLeague(false);
       setSeason("");
       setPrice("");
       setSizeRows([emptySizeStockRow()]);
@@ -180,7 +224,7 @@ export default function AdminAddProductPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                placeholder="Test Product - XL"
+                placeholder="Nombre del producto"
               />
             </Label>
           </Div>
@@ -190,44 +234,40 @@ export default function AdminAddProductPage() {
               <Typography variant="body2" mb={1}>
                 Descripción
               </Typography>
-              <Input
+              <Textarea
                 id="description"
-                type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Camiseta de prueba"
               />
             </Label>
           </Div>
 
           <Box display="flex" gap="4" className="flex-wrap">
             <Div spacing="md" className="flex-1 min-w-[200px]">
-              <Label htmlFor="team" display="block" spacing="sm">
-                <Typography variant="body2" mb={1}>
-                  Equipo
-                </Typography>
-                <Input
-                  id="team"
-                  type="text"
-                  value={team}
-                  onChange={(e) => setTeam(e.target.value)}
-                  placeholder="Test Team"
-                />
-              </Label>
+              <ProductOptionSelect
+                id="team"
+                label="Equipo"
+                value={team}
+                options={productOptions.teams}
+                isCustom={isCustomTeam}
+                onChange={setTeam}
+                onCustomChange={setIsCustomTeam}
+                customPlaceholder="Ingresá el equipo"
+                required
+              />
             </Div>
             <Div spacing="md" className="flex-1 min-w-[200px]">
-              <Label htmlFor="league" display="block" spacing="sm">
-                <Typography variant="body2" mb={1}>
-                  Liga
-                </Typography>
-                <Input
-                  id="league"
-                  type="text"
-                  value={league}
-                  onChange={(e) => setLeague(e.target.value)}
-                  placeholder="club"
-                />
-              </Label>
+              <ProductOptionSelect
+                id="league"
+                label="Liga"
+                value={league}
+                options={productOptions.leagues}
+                isCustom={isCustomLeague}
+                onChange={setLeague}
+                onCustomChange={setIsCustomLeague}
+                customPlaceholder="Ingresá la liga"
+                required
+              />
             </Div>
           </Box>
 
@@ -235,7 +275,7 @@ export default function AdminAddProductPage() {
             <Div spacing="md" className="flex-1 min-w-[120px]">
               <Label htmlFor="season" display="block" spacing="sm">
                 <Typography variant="body2" mb={1}>
-                  Temporada
+                  Temporada *
                 </Typography>
                 <Input
                   id="season"
@@ -243,19 +283,21 @@ export default function AdminAddProductPage() {
                   value={season}
                   onChange={(e) => setSeason(e.target.value)}
                   placeholder="24/25"
+                  required
                 />
               </Label>
             </Div>
             <Div spacing="md" className="flex-1 min-w-[120px]">
               <Label htmlFor="category" display="block" spacing="sm">
                 <Typography variant="body2" mb={1}>
-                  Categoría
+                  Categoría *
                 </Typography>
                 <select
                   id="category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value as CreateProductRequest["category"])}
-                  className="w-full py-2 px-4 bg-gray-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  required
+                  className={formFieldClassName}
                 >
                   {CATEGORY_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -280,7 +322,7 @@ export default function AdminAddProductPage() {
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   required
-                  placeholder="25000"
+                  placeholder="50000"
                 />
               </Label>
             </Div>
@@ -292,6 +334,8 @@ export default function AdminAddProductPage() {
               rows={sizeRows}
               onRowsChange={setSizeRows}
               disabled={isSubmitting}
+              sizeOptions={productOptions.sizes}
+              required
             />
           </Div>
 
@@ -305,21 +349,19 @@ export default function AdminAddProductPage() {
             />
           </Div>
 
-          {error && (
-            <Alert variant="destructive">
-              <Typography variant="body2" color="destructive">
-                {error}
-              </Typography>
-            </Alert>
-          )}
+          <Alert
+            open={!!error}
+            message={error}
+            variant="destructive"
+            onClose={() => setError("")}
+          />
 
-          {success && (
-            <Alert variant="default">
-              <Typography variant="body2">
-                Producto creado correctamente.
-              </Typography>
-            </Alert>
-          )}
+          <Alert
+            open={!!success}
+            message="Producto creado correctamente."
+            variant="default"
+            onClose={() => setSuccess(false)}
+          />
 
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Creando..." : "Crear producto"}

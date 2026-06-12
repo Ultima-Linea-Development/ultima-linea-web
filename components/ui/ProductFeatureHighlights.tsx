@@ -1,4 +1,12 @@
+import Link from "next/link";
 import type { IconType } from "react-icons";
+import {
+  HiOutlineCalendarDays,
+  HiOutlineShieldCheck,
+  HiOutlineSparkles,
+  HiOutlineTag,
+  HiOutlineTrophy,
+} from "react-icons/hi2";
 import Typography from "@/components/ui/Typography";
 import { cn } from "@/lib/utils";
 
@@ -6,7 +14,14 @@ export type ProductFeatureItem = {
   id: string;
   label: string;
   value: string;
-  Icon: IconType;
+};
+
+const FEATURE_ICONS: Record<string, IconType> = {
+  team: HiOutlineShieldCheck,
+  league: HiOutlineTrophy,
+  season: HiOutlineCalendarDays,
+  category: HiOutlineTag,
+  "shirt-type": HiOutlineSparkles,
 };
 
 type ProductFeatureHighlightsProps = {
@@ -14,10 +29,12 @@ type ProductFeatureHighlightsProps = {
   className?: string;
 };
 
-/** Máximo 2 columnas: en la columna lateral del PDP 3 columnas dejan ~100px por celda y el texto colapsa letra a letra. */
-function highlightsGridClass(count: number): string {
-  if (count <= 1) return "grid-cols-1";
-  return "grid-cols-2";
+/** Columnas según ancho disponible; min(100%, 10rem) fuerza 1 col en contenedores angostos. */
+const FEATURES_GRID_CLASS =
+  "grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))]";
+
+function featureSearchHref(value: string) {
+  return `/search?q=${encodeURIComponent(value)}`;
 }
 
 export default function ProductFeatureHighlights({
@@ -25,8 +42,6 @@ export default function ProductFeatureHighlights({
   className,
 }: ProductFeatureHighlightsProps) {
   if (features.length === 0) return null;
-
-  const n = features.length;
 
   return (
     <section
@@ -36,41 +51,49 @@ export default function ProductFeatureHighlights({
       <Typography
         variant="caption"
         uppercase
-        className="mb-3 block text-[11px] tracking-[0.16em] text-muted-foreground sm:mb-4 sm:text-xs"
+        className="mb-1.5 block text-[10px] tracking-[0.14em] text-muted-foreground sm:mb-2 sm:text-[11px]"
       >
         Características
       </Typography>
       <ul
         className={cn(
-          "m-0 grid list-none gap-3 p-0 sm:gap-3.5",
-          highlightsGridClass(n)
+          "m-0 grid list-none gap-x-1.5 gap-y-2.5 p-0 sm:gap-x-2 sm:gap-y-3",
+          FEATURES_GRID_CLASS
         )}
       >
-        {features.map(({ id, label, value, Icon }) => (
-          <li key={id} className="min-w-0">
-            <div
-              className={cn(
-                "flex h-[5.25rem] w-full min-w-0 flex-row items-start gap-2 border-2 border-border/90 bg-card px-2.5 py-2 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.15)] ring-1 ring-black/[0.04]",
-                "sm:h-[6rem] sm:flex-row sm:items-center sm:gap-3 sm:px-3.5 sm:py-2"
-              )}
-            >
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center self-start border border-border/80 bg-muted/50 sm:h-11 sm:w-11 sm:self-center"
-                aria-hidden
+        {features.map(({ id, label, value }) => {
+          const Icon = FEATURE_ICONS[id];
+          if (!Icon) return null;
+
+          return (
+            <li key={id} className="flex min-w-0">
+              <Link
+                href={featureSearchHref(value)}
+                aria-label={`Buscar ${label.toLowerCase()}: ${value}`}
+                className={cn(
+                  "flex w-full min-w-0 items-start gap-1 border border-border/90 bg-card px-2 py-1.5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.03] transition-all duration-200",
+                  "hover:border-black hover:bg-muted/40 hover:shadow-[0_6px_24px_-10px_rgba(0,0,0,0.18)]",
+                  "sm:gap-1.5 sm:px-2.5 sm:py-2"
+                )}
               >
-                <Icon className="h-5 w-5 shrink-0 text-foreground sm:h-6 sm:w-6" />
-              </div>
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-start gap-1 overflow-hidden text-left sm:basis-0 sm:justify-center sm:gap-1.5">
-                <span className="shrink-0 text-xs font-normal leading-tight text-muted-foreground sm:text-[13px]">
-                  {label}
-                </span>
-                <span className="line-clamp-2 w-full text-sm font-bold uppercase leading-tight tracking-tight text-foreground [font-family:var(--font-archivo-black)] sm:text-base">
-                  {value}
-                </span>
-              </div>
-            </div>
-          </li>
-        ))}
+                <div
+                  className="flex h-7 w-7 shrink-0 items-center justify-center border border-border/80 bg-muted/50 sm:h-8 sm:w-8"
+                  aria-hidden
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0 text-foreground sm:h-4 sm:w-4" />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-0 sm:gap-0.5">
+                  <span className="break-words text-xs font-normal leading-tight text-muted-foreground sm:text-[13px]">
+                    {label}
+                  </span>
+                  <span className="break-words text-xs font-bold uppercase leading-snug tracking-tight text-foreground [font-family:var(--font-archivo-black)] sm:text-sm">
+                    {value}
+                  </span>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

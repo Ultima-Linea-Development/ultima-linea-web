@@ -3,6 +3,16 @@ const resolveApiBaseUrl = (): string => {
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
   }
+
+  if (typeof window === "undefined") {
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+      `http://localhost:${process.env.PORT || "3000"}`;
+
+    return `${siteUrl.replace(/\/$/, "")}/api`;
+  }
+
   return "/api";
 };
 
@@ -137,10 +147,17 @@ export type ProductFilters = {
   team?: string;
   league?: string;
   category?: "club" | "national" | "retro";
+  size?: string;
   season?: string;
+  is_active?: boolean;
   page?: number;
   per_page?: number;
 };
+
+export type AdminProductSearchFilters = Pick<
+  ProductFilters,
+  "category" | "size" | "league" | "is_active"
+>;
 
 export type PaginatedProductsResponse = {
   products: Product[];
@@ -154,6 +171,12 @@ export type SearchResponse = {
   query: string;
   total: number;
   results: Product[];
+};
+
+export type ProductOptionsResponse = {
+  teams: string[];
+  leagues: string[];
+  sizes: string[];
 };
 
 export type CreateProductRequest = {
@@ -172,6 +195,47 @@ export type CreateProductRequest = {
 };
 
 export type UpdateProductRequest = Partial<CreateProductRequest>;
+
+export type Sale = {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_sku?: string;
+  size: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateSaleRequest = {
+  product_id: string;
+  size?: string;
+  quantity: number;
+  sale_date?: string;
+};
+
+export type UpdateSaleRequest = {
+  sale_date: string;
+};
+
+export type CreateSaleResponse = {
+  sale: Sale;
+  product: Product;
+};
+
+export type PaginatedSalesResponse = {
+  sales: Sale[];
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+};
+
+export type AvailableProductsResponse = {
+  products: Product[];
+};
 
 export type AdminProfile = {
   id: string;
@@ -199,6 +263,7 @@ export const productsApi = {
     if (filters?.team) params.append("team", filters.team);
     if (filters?.league) params.append("league", filters.league);
     if (filters?.category) params.append("category", filters.category);
+    if (filters?.size) params.append("size", filters.size);
     if (filters?.season) params.append("season", filters.season);
     if (filters?.page != null) params.append("page", String(filters.page));
     if (filters?.per_page != null) params.append("per_page", String(filters.per_page));
@@ -210,11 +275,16 @@ export const productsApi = {
   getById: (id: string) => api.get<Product>(`/products/${id}`),
   getBySlug: (slug: string) => api.get<Product>(`/products/slug/${slug}`),
 
-  search: (query: string) => {
+  search: (query: string, filters?: Pick<ProductFilters, "category" | "size" | "league">) => {
     const params = new URLSearchParams();
     params.append("q", query);
+    if (filters?.category) params.append("category", filters.category);
+    if (filters?.size) params.append("size", filters.size);
+    if (filters?.league) params.append("league", filters.league);
     return api.get<SearchResponse>(`/products/search?${params.toString()}`);
   },
+
+  getOptions: () => api.get<ProductOptionsResponse>("/products/options"),
 };
 
 export type UploadProductImagesResponse = {
@@ -257,6 +327,41 @@ async function requestFormData<T>(
 }
 
 export const adminProductsApi = {
+  getById: (id: string, token: string) =>
+    api.get<Product>(`/admin/products/${id}`, token),
+
+  getAll: (token: string, filters?: ProductFilters) => {
+    const params = new URLSearchParams();
+    if (filters?.team) params.append("team", filters.team);
+    if (filters?.league) params.append("league", filters.league);
+    if (filters?.category) params.append("category", filters.category);
+    if (filters?.size) params.append("size", filters.size);
+    if (filters?.season) params.append("season", filters.season);
+    if (filters?.is_active !== undefined) {
+      params.append("is_active", String(filters.is_active));
+    }
+    if (filters?.page != null) params.append("page", String(filters.page));
+    if (filters?.per_page != null) params.append("per_page", String(filters.per_page));
+
+    const query = params.toString();
+    return api.get<PaginatedProductsResponse>(
+      `/admin/products${query ? `?${query}` : ""}`,
+      token
+    );
+  },
+
+  search: (token: string, query: string, filters?: AdminProductSearchFilters) => {
+    const params = new URLSearchParams();
+    params.append("q", query);
+    if (filters?.category) params.append("category", filters.category);
+    if (filters?.size) params.append("size", filters.size);
+    if (filters?.league) params.append("league", filters.league);
+    if (filters?.is_active !== undefined) {
+      params.append("is_active", String(filters.is_active));
+    }
+    return api.get<SearchResponse>(`/admin/products/search?${params.toString()}`, token);
+  },
+
   create: (product: CreateProductRequest, token: string) =>
     api.post<Product>("/admin/products", product, token),
 
@@ -265,6 +370,29 @@ export const adminProductsApi = {
 
   delete: (id: string, token: string) =>
     api.delete<{ message: string }>(`/admin/products/${id}`, token),
+};
+
+export const adminSalesApi = {
+  getAll: (token: string, filters?: { page?: number; per_page?: number }) => {
+    const params = new URLSearchParams();
+    if (filters?.page != null) params.append("page", String(filters.page));
+    if (filters?.per_page != null) params.append("per_page", String(filters.per_page));
+
+    const query = params.toString();
+    return api.get<PaginatedSalesResponse>(`/admin/sales${query ? `?${query}` : ""}`, token);
+  },
+
+  create: (sale: CreateSaleRequest, token: string) =>
+    api.post<CreateSaleResponse>("/admin/sales", sale, token),
+
+  update: (id: string, sale: UpdateSaleRequest, token: string) =>
+    api.put<{ sale: Sale }>(`/admin/sales/${id}`, sale, token),
+
+  delete: (id: string, token: string) =>
+    api.delete<{ message: string; product?: Product }>(`/admin/sales/${id}`, token),
+
+  getAvailableProducts: (token: string) =>
+    api.get<AvailableProductsResponse>("/admin/sales/products", token),
 };
 
 export const adminUploadApi = {

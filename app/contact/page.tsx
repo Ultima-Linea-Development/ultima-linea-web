@@ -55,7 +55,7 @@ export default function ContactPage() {
             <Typography variant="h5" mb={3}>
               WhatsApp
             </Typography>
-            <Button variant="ctaSolid" size="xl" asChild>
+            <Button variant="ctaSolid" size="cta" className="w-fit" asChild>
               <Link href={WHATSAPP_CONSULT_URL} target="_blank" rel="noopener noreferrer">
                 <FaWhatsapp aria-hidden />
                 Escribir por WhatsApp

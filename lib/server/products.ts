@@ -127,7 +127,7 @@ export function sumStockBySizes(stockBySizes: Record<string, number>): number {
 }
 
 export async function findProductByIdOrSlugOrSku(
-  collection: Collection,
+  collection: Collection<ProductDocument>,
   param: string,
   activeOnly = true
 ): Promise<Product | null> {
@@ -137,5 +137,5 @@ export async function findProductByIdOrSlugOrSku(
   if (activeOnly) filter.is_active = true;
 
   const doc = await collection.findOne(filter);
-  return doc ? productFromDoc(doc as unknown as ProductDocument) : null;
+  return doc ? productFromDoc(doc) : null;
 }

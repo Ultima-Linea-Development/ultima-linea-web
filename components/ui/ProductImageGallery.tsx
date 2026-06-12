@@ -1,13 +1,36 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
+import { HiMagnifyingGlassPlus } from "react-icons/hi2";
 import Box from "@/components/layout/Box";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/Icons";
 import Lightbox from "@/components/ui/Lightbox";
+import { cn } from "@/lib/utils";
 
 const ZOOM_SCALE = 1.75;
+
+type ZoomCursorProps = {
+  x: number;
+  y: number;
+};
+
+function ZoomCursor({ x, y }: ZoomCursorProps) {
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="pointer-events-none fixed z-[60] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/90 bg-black/60 p-1.5 text-white shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
+      style={{ left: x, top: y }}
+      aria-hidden
+    >
+      <HiMagnifyingGlassPlus className="h-5 w-5" />
+    </div>,
+    document.body
+  );
+}
 
 type ZoomableImageProps = {
   url: string;
@@ -27,6 +50,9 @@ function ZoomableImage({
   const ref = React.useRef<HTMLButtonElement>(null);
   const [pan, setPan] = React.useState({ x: 0.5, y: 0.5 });
   const [isHovering, setIsHovering] = React.useState(false);
+  const [cursorPoint, setCursorPoint] = React.useState<{ x: number; y: number } | null>(
+    null
+  );
 
   const handleMouseMove = React.useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -36,12 +62,23 @@ function ZoomableImage({
       const x = (e.clientX - rect.left) / rect.width;
       const y = (e.clientY - rect.top) / rect.height;
       setPan({ x, y });
+      setCursorPoint({ x: e.clientX, y: e.clientY });
     },
     []
   );
 
-  const handleMouseEnter = React.useCallback(() => setIsHovering(true), []);
-  const handleMouseLeave = React.useCallback(() => setIsHovering(false), []);
+  const handleMouseEnter = React.useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      setIsHovering(true);
+      setCursorPoint({ x: e.clientX, y: e.clientY });
+    },
+    []
+  );
+
+  const handleMouseLeave = React.useCallback(() => {
+    setIsHovering(false);
+    setCursorPoint(null);
+  }, []);
 
   const scale = isHovering ? ZOOM_SCALE : 1;
   const transformOrigin = isHovering
@@ -49,30 +86,42 @@ function ZoomableImage({
     : "50% 50%";
 
   return (
-    <button
-      ref={ref}
-      type="button"
-      onClick={onClick}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className="relative aspect-square min-w-0 overflow-hidden focus:outline-none focus:ring-2 focus:ring-foreground focus:ring-offset-2"
-      aria-label={ariaLabel}
-    >
-      <Image
-        src={url}
-        alt={alt}
-        fill
-        className="object-cover transition-transform duration-200 ease-out"
-        style={{
-          transform: `scale(${scale})`,
-          transformOrigin,
-        }}
-        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 45vw, 35vw"
-        priority={priority}
-        draggable={false}
-      />
-    </button>
+    <>
+      <button
+        ref={ref}
+        type="button"
+        onClick={onClick}
+        onMouseMove={handleMouseMove}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={cn(
+          "group relative aspect-square min-w-0 overflow-hidden focus:outline-none focus:ring-2 focus:ring-foreground focus:ring-offset-2",
+          isHovering && "cursor-none"
+        )}
+        aria-label={ariaLabel}
+      >
+        <Image
+          src={url}
+          alt={alt}
+          fill
+          className="object-cover transition-transform duration-200 ease-out group-hover:brightness-[0.92]"
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin,
+          }}
+          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 45vw, 35vw"
+          priority={priority}
+          draggable={false}
+        />
+        <span
+          className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-200 group-hover:bg-black/15"
+          aria-hidden
+        />
+      </button>
+      {isHovering && cursorPoint && (
+        <ZoomCursor x={cursorPoint.x} y={cursorPoint.y} />
+      )}
+    </>
   );
 }
 
@@ -88,6 +137,36 @@ export default function ProductImageGallery({
   const [lightboxOpen, setLightboxOpen] = React.useState(false);
   const [lightboxIndex, setLightboxIndex] = React.useState(0);
   const [isExpanded, setIsExpanded] = React.useState(false);
+  const galleryTopRef = React.useRef<HTMLDivElement>(null);
+  const expandableRef = React.useRef<HTMLDivElement>(null);
+  const skipScrollRef = React.useRef(true);
+
+  React.useEffect(() => {
+    if (skipScrollRef.current) {
+      skipScrollRef.current = false;
+      return;
+    }
+
+    if (isExpanded) {
+      const timer = window.setTimeout(() => {
+        expandableRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        });
+      }, 150);
+
+      return () => window.clearTimeout(timer);
+    }
+
+    galleryTopRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [isExpanded]);
+
+  const handleToggleExpanded = () => {
+    setIsExpanded((prev) => !prev);
+  };
 
   const openLightbox = (index: number) => {
     setLightboxIndex(index);
@@ -101,6 +180,8 @@ export default function ProductImageGallery({
   const goNext = () =>
     setLightboxIndex((i) => (i < imageUrls.length - 1 ? i + 1 : 0));
 
+  const goToIndex = (index: number) => setLightboxIndex(index);
+
   if (imageUrls.length === 0) return null;
 
   const hasToggle = imageUrls.length > 4;
@@ -109,7 +190,7 @@ export default function ProductImageGallery({
   const extraImages = hasToggle ? imageUrls.slice(2) : [];
 
   return (
-    <>
+    <div ref={galleryTopRef} className="scroll-mt-20">
       <Box display="grid" cols={2} gap={2} className="min-w-0 grid-cols-2">
         {alwaysVisibleImages.map((url, index) => (
           <ZoomableImage
@@ -141,6 +222,7 @@ export default function ProductImageGallery({
       )}
       {hasToggle && (
         <div
+          ref={expandableRef}
           className={`overflow-hidden transition-all duration-300 ease-out ${
             isExpanded
               ? "mt-2 max-h-[2000px] translate-y-0 opacity-100"
@@ -170,9 +252,9 @@ export default function ProductImageGallery({
           <Button
             type="button"
             variant="ctaOutline"
-            size="xl"
-            onClick={() => setIsExpanded((prev) => !prev)}
-            className="min-w-[10.5rem] h-10 min-h-10 px-4 py-2 text-sm normal-case tracking-normal sm:min-w-[12.5rem] sm:min-h-12 sm:px-6 sm:py-3 sm:text-sm sm:normal-case sm:tracking-normal"
+            size="cta"
+            onClick={handleToggleExpanded}
+            className="min-w-[10.5rem] sm:min-w-[12.5rem]"
             aria-expanded={isExpanded}
             aria-label={isExpanded ? "Ocultar imágenes" : "Mostrar más imágenes"}
           >
@@ -194,8 +276,9 @@ export default function ProductImageGallery({
         currentIndex={lightboxIndex}
         onPrev={imageUrls.length > 1 ? goPrev : undefined}
         onNext={imageUrls.length > 1 ? goNext : undefined}
+        onSelectIndex={imageUrls.length > 1 ? goToIndex : undefined}
         alt={productName}
       />
-    </>
+    </div>
   );
 }

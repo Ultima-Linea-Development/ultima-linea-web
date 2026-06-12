@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureIndexes, getProductsCollection } from "@/lib/server/db";
+import { ProductDocument } from "@/lib/server/models";
 import {
   isNextResponse,
   jsonError,
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
   try {
     await ensureIndexes();
 
-    const collection = await getProductsCollection();
+    const collection = await getProductsCollection<ProductDocument>();
     const activeFilter = { is_active: true };
 
     const byTypeCursor = collection.aggregate([

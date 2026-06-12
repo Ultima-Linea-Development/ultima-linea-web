@@ -2,9 +2,9 @@ import { MongoClient, Db, Collection, Document } from "mongodb";
 
 const USERS_COLLECTION = "users";
 const PRODUCTS_COLLECTION = "products";
+const SALES_COLLECTION = "sales";
 
 declare global {
-  // eslint-disable-next-line no-var
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
@@ -68,6 +68,10 @@ export async function getProductsCollection<T extends Document = Document>() {
   return getCollection<T>(PRODUCTS_COLLECTION);
 }
 
+export async function getSalesCollection<T extends Document = Document>() {
+  return getCollection<T>(SALES_COLLECTION);
+}
+
 let indexesCreated = false;
 
 export async function ensureIndexes(): Promise<void> {
@@ -89,7 +93,13 @@ export async function ensureIndexes(): Promise<void> {
     { key: { sizes: 1 } },
   ]);
 
+  const sales = db.collection(SALES_COLLECTION);
+  await sales.createIndexes([
+    { key: { product_id: 1 } },
+    { key: { created_at: -1 } },
+  ]);
+
   indexesCreated = true;
 }
 
-export { USERS_COLLECTION, PRODUCTS_COLLECTION };
+export { USERS_COLLECTION, PRODUCTS_COLLECTION, SALES_COLLECTION };

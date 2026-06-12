@@ -23,16 +23,41 @@ export function getProductTotalStock(
   return product.stock ?? 0;
 }
 
+const SIZE_SORT_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "2XL", "3XL"];
+
+export function compareSizeLabels(a: string, b: string): number {
+  const normalize = (value: string) => value.trim().toUpperCase();
+  const ai = SIZE_SORT_ORDER.indexOf(normalize(a));
+  const bi = SIZE_SORT_ORDER.indexOf(normalize(b));
+  if (ai !== -1 && bi !== -1) return ai - bi;
+  if (ai !== -1) return -1;
+  if (bi !== -1) return 1;
+  return a.localeCompare(b, "es", { sensitivity: "base" });
+}
+
 export function orderedSizeEntries(product: Product): [string, number][] {
   const by = product.stock_by_sizes;
   if (by && Object.keys(by).length > 0) {
-    const order = product.sizes?.length ? product.sizes : Object.keys(by).sort((a, b) => a.localeCompare(b));
+    const order = product.sizes?.length
+      ? product.sizes
+      : Object.keys(by).sort(compareSizeLabels);
     return order.map((s) => [s, by[s] ?? 0]);
   }
   if (product.size?.trim() && product.stock != null) {
     return [[product.size.trim(), product.stock]];
   }
   return [];
+}
+
+export function getProductStockEntries(product: Product): [string, number][] {
+  return orderedSizeEntries(product)
+    .filter(([, stock]) => stock > 0)
+    .sort(([a], [b]) => compareSizeLabels(a, b));
+}
+
+export function formatProductSizeStockDisplay(stock: number | null | undefined): string {
+  if (stock == null || stock === 0) return "";
+  return String(stock);
 }
 
 export function productToRows(product: Product): SizeStockRow[] {
@@ -55,10 +80,13 @@ export function productToRows(product: Product): SizeStockRow[] {
 }
 
 export function rowsToPayload(
-  rows: SizeStockRow[]
+  rows: SizeStockRow[],
+  options?: { allowEmpty?: boolean }
 ): { sizes: string[]; stock_by_sizes: Record<string, number> } | null {
   const filtered = rows.filter((r) => r.size.trim());
-  if (filtered.length === 0) return null;
+  if (filtered.length === 0) {
+    return options?.allowEmpty ? { sizes: [], stock_by_sizes: {} } : null;
+  }
   const sizes: string[] = [];
   const stock_by_sizes: Record<string, number> = {};
   for (const r of filtered) {

@@ -2,6 +2,7 @@
 
 import Box from "@/components/layout/Box";
 import Logo from "@/components/brand/Logo";
+import Icon from "@/components/ui/Icons";
 import { cn } from "@/lib/utils";
 import AdminNavLink from "./AdminNavLink";
 import AdminLogoutLink from "./AdminLogoutLink";
@@ -28,7 +29,18 @@ export default function AdminShell({ children }: AdminShellProps) {
             <Logo />
           </Box>
           <nav className="flex flex-col gap-1">
-            <AdminNavLink href="/admin/products">Catálogo</AdminNavLink>
+            <AdminNavLink
+              href="/admin/products"
+              icon={<Icon name="catalog" className="size-5" />}
+            >
+              Catálogo
+            </AdminNavLink>
+            <AdminNavLink
+              href="/admin/sales"
+              icon={<Icon name="sales" className="size-5" />}
+            >
+              Ventas
+            </AdminNavLink>
           </nav>
         </Box>
         <Box className="mt-auto pt-4 border-t border-border">
@@ -38,7 +50,7 @@ export default function AdminShell({ children }: AdminShellProps) {
 
       {/* Main: espacio para bottom bar en mobile */}
       <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 pb-24 md:pb-6">
-        {children}
+        <div className="mx-auto w-full max-w-7xl">{children}</div>
       </main>
 
       {/* Barra inferior: solo mobile */}
@@ -49,7 +61,18 @@ export default function AdminShell({ children }: AdminShellProps) {
         )}
       >
         <nav className="flex flex-row items-center justify-around gap-1 w-full [&>a]:flex-1 [&>a]:justify-center [&>a]:text-center [&>a]:min-w-0 [&>a]:py-2 [&>a]:!text-center">
-          <AdminNavLink href="/admin/products">Catálogo</AdminNavLink>
+          <AdminNavLink
+            href="/admin/products"
+            icon={<Icon name="catalog" className="size-5" />}
+          >
+            Catálogo
+          </AdminNavLink>
+          <AdminNavLink
+            href="/admin/sales"
+            icon={<Icon name="sales" className="size-5" />}
+          >
+            Ventas
+          </AdminNavLink>
           <AdminLogoutLink />
         </nav>
       </aside>

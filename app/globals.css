@@ -31,6 +31,14 @@
     /* Colores destructivos */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+
+    /* Eliminar (pastel) */
+    --delete: 0 65% 92%;
+    --delete-foreground: 0 45% 32%;
+
+    /* Advertencia / desactivar (pastel) */
+    --warning: 45 80% 88%;
+    --warning-foreground: 38 45% 28%;
     
     /* Bordes e inputs */
     --border: 0 0% 89.8%;
@@ -58,6 +66,10 @@
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+    --delete: 0 35% 22%;
+    --delete-foreground: 0 65% 88%;
+    --warning: 45 35% 22%;
+    --warning-foreground: 45 75% 85%;
     --border: 0 0% 20%;
     --input: 0 0% 20%;
     --ring: 0 0% 100%;
@@ -67,6 +79,10 @@
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
+  --color-delete: hsl(var(--delete));
+  --color-delete-foreground: hsl(var(--delete-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
   --font-sans: var(--font-archivo), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-heading: var(--font-archivo-black), var(--font-archivo), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }

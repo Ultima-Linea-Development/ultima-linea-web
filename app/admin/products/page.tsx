@@ -6,11 +6,12 @@ import Link from "next/link";
 import Box from "@/components/layout/Box";
 import Spinner from "@/components/ui/Spinner";
 import Typography from "@/components/ui/Typography";
-import Alert from "@/components/ui/Alert";
+import Alert, { InlineAlert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/button";
 import AdminShell from "@/components/admin/AdminShell";
 import AdminProductsTable, { PER_PAGE } from "@/components/admin/AdminProductsTable";
-import AdminCatalogSearch from "@/components/admin/AdminCatalogSearch";
+import AdminSearchInput from "@/components/admin/AdminSearchInput";
+import AdminProductSearchSuggestion from "@/components/admin/AdminProductSearchSuggestion";
 import AdminProductEditForm from "@/components/admin/AdminProductEditForm";
 import Modal from "@/components/ui/Modal";
 import { isAdmin, getUserFromToken, clearAuth, getToken } from "@/lib/auth";
@@ -20,6 +21,8 @@ import {
   type Product,
   type UpdateProductRequest,
 } from "@/lib/api";
+import { filterProductsByQuery } from "@/lib/admin-product-search";
+import { usePendingDelete } from "@/lib/use-pending-delete";
 
 export default function AdminProductsPage() {
   const router = useRouter();
@@ -28,6 +31,14 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<Awaited<ReturnType<typeof productsApi.getAll>>["data"]>(undefined);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
+  const {
+    deleteToast,
+    undoDuration,
+    scheduleDelete,
+    undoDelete,
+    dismissDeleteToast,
+    flushPendingDelete,
+  } = usePendingDelete();
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editError, setEditError] = useState("");
@@ -43,15 +54,39 @@ export default function AdminProductsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchTick, setSearchTick] = useState(0);
+  const [searchSuggestions, setSearchSuggestions] = useState<Product[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [sizeFilter, setSizeFilter] = useState("");
+  const [activeFilter, setActiveFilter] = useState("");
+  const [sizeOptions, setSizeOptions] = useState<string[]>([]);
   const searchCacheRef = useRef<{ query: string; results: Product[] } | null>(null);
 
+  const catalogFilters = {
+    ...(categoryFilter ? { category: categoryFilter as Product["category"] } : {}),
+    ...(sizeFilter ? { size: sizeFilter } : {}),
+    ...(activeFilter === "true"
+      ? { is_active: true }
+      : activeFilter === "false"
+        ? { is_active: false }
+        : {}),
+  };
+
   const loadCatalog = useCallback(async () => {
+    await flushPendingDelete();
     setError("");
+    const token = getToken();
+    if (!token) {
+      setError("Sesión expirada. Volvé a iniciar sesión.");
+      setProducts(undefined);
+      return;
+    }
+
     const q = searchQuery.trim();
     if (!q) {
-      const response = await productsApi.getAll({
+      const response = await adminProductsApi.getAll(token, {
         page,
         per_page: PER_PAGE,
+        ...catalogFilters,
       });
       if (response.error) {
         setError(response.error);
@@ -63,7 +98,7 @@ export default function AdminProductsPage() {
     }
     let all = searchCacheRef.current?.query === q ? searchCacheRef.current.results : null;
     if (!all) {
-      const response = await productsApi.search(q);
+      const response = await adminProductsApi.search(token, q, catalogFilters);
       if (response.error || !response.data) {
         setError(response.error ?? "Error al buscar");
         setProducts(undefined);
@@ -86,7 +121,7 @@ export default function AdminProductsPage() {
     if (safePage !== page) {
       setPage(safePage);
     }
-  }, [searchQuery, page]);
+  }, [searchQuery, page, categoryFilter, sizeFilter, activeFilter, flushPendingDelete]);
 
   const refreshCatalog = useCallback(async () => {
     searchCacheRef.current = null;
@@ -117,11 +152,80 @@ export default function AdminProductsPage() {
     });
   }, [isAuthorized, loadCatalog, searchTick]);
 
+  useEffect(() => {
+    if (!isAuthorized) return;
+    void productsApi.getOptions().then((response) => {
+      if (response.data) {
+        setSizeOptions(response.data.sizes);
+      }
+    });
+  }, [isAuthorized]);
+
+  useEffect(() => {
+    const query = searchInput.trim();
+    if (!query) {
+      setSearchSuggestions([]);
+      return;
+    }
+
+    if (searchCacheRef.current) {
+      const cached = searchCacheRef.current;
+      if (cached.query === query) {
+        setSearchSuggestions(cached.results.slice(0, 8));
+      } else {
+        const filtered = filterProductsByQuery(cached.results, query, 8);
+        if (filtered.length > 0) {
+          setSearchSuggestions(filtered);
+        }
+      }
+    }
+
+    const timer = setTimeout(() => {
+      const token = getToken();
+      if (!token) {
+        setSearchSuggestions([]);
+        return;
+      }
+
+      void adminProductsApi.search(token, query).then((response) => {
+        if (response.data) {
+          setSearchSuggestions(response.data.results.slice(0, 8));
+          return;
+        }
+        setSearchSuggestions([]);
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const applyCatalogFilters = useCallback(() => {
+    searchCacheRef.current = null;
+    setPage(1);
+    setSearchTick((tick) => tick + 1);
+  }, []);
+
+  const handleCategoryFilterChange = useCallback((value: string) => {
+    setCategoryFilter(value);
+    applyCatalogFilters();
+  }, [applyCatalogFilters]);
+
+  const handleSizeFilterChange = useCallback((value: string) => {
+    setSizeFilter(value);
+    applyCatalogFilters();
+  }, [applyCatalogFilters]);
+
+  const handleActiveFilterChange = useCallback((value: string) => {
+    setActiveFilter(value);
+    applyCatalogFilters();
+  }, [applyCatalogFilters]);
+
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
 
   const handleEdit = (product: Product) => {
+    void flushPendingDelete();
     setEditingProductId(product.id);
     setEditingProduct(null);
     setEditError("");
@@ -135,8 +239,15 @@ export default function AdminProductsPage() {
       setIsLoadingProduct(true);
       setEditError("");
     });
-    productsApi
-      .getById(id)
+    const token = getToken();
+    if (!token) {
+      setEditError("Sesión expirada. Volvé a iniciar sesión.");
+      setIsLoadingProduct(false);
+      return;
+    }
+
+    adminProductsApi
+      .getById(id, token)
       .then((response) => {
         if (response.error || !response.data) {
           setEditError(response.error ?? "No se pudo cargar el producto.");
@@ -183,6 +294,44 @@ export default function AdminProductsPage() {
     setBulkError("");
   };
 
+  const handleDeactivate = useCallback(
+    async (product: Product) => {
+      await flushPendingDelete();
+      const token = getToken();
+      if (!token) {
+        setError("Sesión expirada. Volvé a iniciar sesión.");
+        return;
+      }
+      setError("");
+      const response = await adminProductsApi.update(product.id, { is_active: false }, token);
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
+      await refreshCatalog();
+    },
+    [refreshCatalog, flushPendingDelete]
+  );
+
+  const handleReactivate = useCallback(
+    async (product: Product) => {
+      await flushPendingDelete();
+      const token = getToken();
+      if (!token) {
+        setError("Sesión expirada. Volvé a iniciar sesión.");
+        return;
+      }
+      setError("");
+      const response = await adminProductsApi.update(product.id, { is_active: true }, token);
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
+      await refreshCatalog();
+    },
+    [refreshCatalog, flushPendingDelete]
+  );
+
   const handleCancelDelete = () => {
     setDeleteConfirmProduct(null);
     setDeleteError("");
@@ -226,25 +375,59 @@ export default function AdminProductsPage() {
 
   const handleBulkEliminarConfirm = useCallback(async () => {
     if (!bulkConfirmIds?.length) return;
-    const token = getToken();
-    if (!token) {
-      setBulkError("Sesión expirada.");
-      return;
-    }
-    const count = bulkConfirmIds.length;
-    setIsBulkSubmitting(true);
-    setBulkError("");
-    let failed = 0;
-    for (const id of bulkConfirmIds) {
-      const res = await adminProductsApi.delete(id, token);
-      if (res.error) failed++;
-    }
+    const ids = bulkConfirmIds;
+    const count = ids.length;
+    const productsSnapshot = products;
+    const idSet = new Set(ids);
+
     setBulkConfirmIds(null);
     setSelectedIds([]);
-    await refreshCatalog();
     setIsBulkSubmitting(false);
-    if (failed > 0) setBulkError(`${failed} de ${count} no se pudieron eliminar.`);
-  }, [bulkConfirmIds, refreshCatalog]);
+    setBulkError("");
+    setError("");
+
+    setProducts((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        products: prev.products.filter((product) => !idSet.has(product.id)),
+        total: Math.max(0, prev.total - count),
+      };
+    });
+
+    await scheduleDelete({
+      message:
+        count === 1
+          ? "Artículo eliminado correctamente."
+          : `${count} artículos eliminados correctamente.`,
+      restore: () => setProducts(productsSnapshot),
+      commit: async () => {
+        const token = getToken();
+        if (!token) {
+          setProducts(productsSnapshot);
+          setBulkError("Sesión expirada.");
+          return;
+        }
+
+        let failed = 0;
+        for (const id of ids) {
+          const res = await adminProductsApi.delete(id, token);
+          if (res.error) failed++;
+        }
+
+        if (failed > 0) {
+          setProducts(productsSnapshot);
+          setBulkError(`${failed} de ${count} no se pudieron eliminar.`);
+          searchCacheRef.current = null;
+          await loadCatalog();
+          return;
+        }
+
+        searchCacheRef.current = null;
+        await loadCatalog();
+      },
+    });
+  }, [bulkConfirmIds, products, scheduleDelete, loadCatalog]);
 
   const handleBulkCancel = () => {
     setBulkConfirmIds(null);
@@ -277,38 +460,63 @@ export default function AdminProductsPage() {
 
   const handleConfirmEliminar = useCallback(async () => {
     if (!deleteConfirmProduct) return;
-    const token = getToken();
-    if (!token) {
-      setDeleteError("Sesión expirada. Volvé a iniciar sesión.");
-      return;
-    }
-    setIsDeleteSubmitting(true);
-    setDeleteError("");
-    const response = await adminProductsApi.delete(deleteConfirmProduct.id, token);
-    if (response.error) {
-      setDeleteError(response.error);
-      setIsDeleteSubmitting(false);
-      return;
-    }
-    setDeleteConfirmProduct(null);
-    await refreshCatalog();
-    setIsDeleteSubmitting(false);
-  }, [deleteConfirmProduct, refreshCatalog]);
+    const product = deleteConfirmProduct;
+    const productsSnapshot = products;
 
-  const applySearch = () => {
+    setDeleteConfirmProduct(null);
+    setIsDeleteSubmitting(false);
+    setDeleteError("");
+    setError("");
+
+    setProducts((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        products: prev.products.filter((item) => item.id !== product.id),
+        total: Math.max(0, prev.total - 1),
+      };
+    });
+
+    await scheduleDelete({
+      message: "Artículo eliminado correctamente.",
+      restore: () => setProducts(productsSnapshot),
+      commit: async () => {
+        const token = getToken();
+        if (!token) {
+          setProducts(productsSnapshot);
+          setError("Sesión expirada. Volvé a iniciar sesión.");
+          return;
+        }
+
+        const response = await adminProductsApi.delete(product.id, token);
+        if (response.error) {
+          setProducts(productsSnapshot);
+          setError(response.error);
+          return;
+        }
+
+        searchCacheRef.current = null;
+        await loadCatalog();
+      },
+    });
+  }, [deleteConfirmProduct, products, scheduleDelete, loadCatalog]);
+
+  const applySearchFromQuery = useCallback((query: string) => {
     searchCacheRef.current = null;
-    setSearchQuery(searchInput.trim());
+    setSearchInput(query);
+    setSearchQuery(query.trim());
     setPage(1);
     setSearchTick((t) => t + 1);
-  };
+  }, []);
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     searchCacheRef.current = null;
     setSearchInput("");
     setSearchQuery("");
+    setSearchSuggestions([]);
     setPage(1);
     setSearchTick((t) => t + 1);
-  };
+  }, []);
 
   if (isLoading) {
     return (
@@ -338,29 +546,41 @@ export default function AdminProductsPage() {
           </Button>
         </Box>
 
-        <AdminCatalogSearch
+        <AdminSearchInput
           value={searchInput}
           onChange={setSearchInput}
-          onSubmit={applySearch}
           onClear={clearSearch}
-          hasActiveQuery={Boolean(searchQuery.trim())}
+          onSubmit={applySearchFromQuery}
+          onSuggestionSelect={(product) => applySearchFromQuery(product.name)}
+          suggestions={searchInput.trim() ? searchSuggestions : []}
+          getSuggestionKey={(product) => product.id}
+          renderSuggestion={(product) => <AdminProductSearchSuggestion product={product} />}
+          emptyMessage="No hay productos"
+          listboxId="catalog-product-listbox"
         />
 
-        {error && (
-          <Alert variant="destructive">
-            <Typography variant="body2" color="destructive">
-              {error}
-            </Typography>
-          </Alert>
-        )}
+        <Alert
+          open={!!deleteToast}
+          message={deleteToast}
+          variant="default"
+          duration={undoDuration}
+          onClose={dismissDeleteToast}
+          onUndo={undoDelete}
+        />
 
-        {bulkError && (
-          <Alert variant="destructive">
-            <Typography variant="body2" color="destructive">
-              {bulkError}
-            </Typography>
-          </Alert>
-        )}
+        <Alert
+          open={!!error}
+          message={error}
+          variant="destructive"
+          onClose={() => setError("")}
+        />
+
+        <Alert
+          open={!!bulkError}
+          message={bulkError}
+          variant="destructive"
+          onClose={() => setBulkError("")}
+        />
 
         {deleteConfirmProduct && (
           <Modal open={!!deleteConfirmProduct} onClose={handleCancelDelete} title="Eliminar artículo">
@@ -369,16 +589,16 @@ export default function AdminProductsPage() {
                 Estás seguro que deseas eliminar este artículo?
               </Typography>
               {deleteError && (
-                <Alert variant="destructive">
+                <InlineAlert variant="destructive">
                   <Typography variant="body2" color="destructive">
                     {deleteError}
                   </Typography>
-                </Alert>
+                </InlineAlert>
               )}
               <Box display="flex" gap="2" className="flex-wrap">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="warning"
                   onClick={handleConfirmDesactivar}
                   disabled={isDeleteSubmitting}
                 >
@@ -386,7 +606,7 @@ export default function AdminProductsPage() {
                 </Button>
                 <Button
                   type="button"
-                  variant="destructive"
+                  variant="delete"
                   onClick={handleConfirmEliminar}
                   disabled={isDeleteSubmitting}
                 >
@@ -417,16 +637,16 @@ export default function AdminProductsPage() {
                 {bulkConfirmIds.length === 1 ? "" : "s"}?
               </Typography>
               {bulkError && (
-                <Alert variant="destructive">
+                <InlineAlert variant="destructive">
                   <Typography variant="body2" color="destructive">
                     {bulkError}
                   </Typography>
-                </Alert>
+                </InlineAlert>
               )}
               <Box display="flex" gap="2" className="flex-wrap">
                 <Button
                   type="button"
-                  variant="destructive"
+                  variant="delete"
                   onClick={handleBulkEliminarConfirm}
                   disabled={isBulkSubmitting}
                 >
@@ -461,58 +681,13 @@ export default function AdminProductsPage() {
                 getToken={getToken}
               />
             ) : editError ? (
-              <Alert variant="destructive">
+              <InlineAlert variant="destructive">
                 <Typography variant="body2" color="destructive">
                   {editError}
                 </Typography>
-              </Alert>
+              </InlineAlert>
             ) : null}
           </Modal>
-        )}
-
-        {selectedIds.length > 0 && (
-          <Box
-            display="flex"
-            className="items-center justify-between gap-4 flex-wrap border border-border bg-muted/30 p-3"
-          >
-            <Typography variant="body2">
-              {selectedIds.length} seleccionado{selectedIds.length === 1 ? "" : "s"}
-            </Typography>
-            {bulkError && (
-              <Typography variant="body2" color="destructive">
-                {bulkError}
-              </Typography>
-            )}
-            <Box display="flex" gap="2" className="flex-wrap">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleBulkDesactivar}
-                disabled={isBulkSubmitting}
-              >
-                {isBulkSubmitting ? "..." : "Desactivar"}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkEliminarClick}
-                disabled={isBulkSubmitting}
-              >
-                Eliminar
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleClearSelection}
-                disabled={isBulkSubmitting}
-              >
-                Limpiar
-              </Button>
-            </Box>
-          </Box>
         )}
 
         <AdminProductsTable
@@ -523,9 +698,59 @@ export default function AdminProductsPage() {
           totalPages={totalPages}
           onPageChange={handlePageChange}
           onEdit={handleEdit}
+          onDeactivate={handleDeactivate}
+          onReactivate={handleReactivate}
           onDelete={handleDelete}
           selectedIds={selectedIds}
           onSelectionChange={handleSelectionChange}
+          categoryFilter={categoryFilter}
+          sizeFilter={sizeFilter}
+          activeFilter={activeFilter}
+          sizeOptions={sizeOptions}
+          onCategoryFilterChange={handleCategoryFilterChange}
+          onSizeFilterChange={handleSizeFilterChange}
+          onActiveFilterChange={handleActiveFilterChange}
+          tableFooter={
+            selectedIds.length > 0 ? (
+              <Box
+                display="flex"
+                className="items-center justify-between gap-4 flex-wrap border border-border bg-muted/30 p-3"
+              >
+                <Typography variant="body2">
+                  {selectedIds.length} seleccionado{selectedIds.length === 1 ? "" : "s"}
+                </Typography>
+                <Box display="flex" gap="2" className="flex-wrap">
+                  <Button
+                    type="button"
+                    variant="warning"
+                    size="sm"
+                    onClick={handleBulkDesactivar}
+                    disabled={isBulkSubmitting}
+                  >
+                    {isBulkSubmitting ? "..." : "Desactivar"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="delete"
+                    size="sm"
+                    onClick={handleBulkEliminarClick}
+                    disabled={isBulkSubmitting}
+                  >
+                    Eliminar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearSelection}
+                    disabled={isBulkSubmitting}
+                  >
+                    Cancelar selección
+                  </Button>
+                </Box>
+              </Box>
+            ) : null
+          }
         />
       </Box>
     </AdminShell>

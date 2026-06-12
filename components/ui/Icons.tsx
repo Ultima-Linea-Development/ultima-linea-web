@@ -8,6 +8,14 @@ import {
   MdOutlineDelete,
   MdChevronLeft,
   MdChevronRight,
+  MdOutlineInventory2,
+  MdOutlinePointOfSale,
+  MdOutlineLogout,
+  MdOutlineFilterList,
+  MdFilterList,
+  MdMoreVert,
+  MdOutlineVisibilityOff,
+  MdOutlineVisibility,
 } from "react-icons/md";
 import { ComponentProps } from "react";
 
@@ -20,6 +28,14 @@ export const Icons = {
   delete: MdOutlineDelete,
   chevronLeft: MdChevronLeft,
   chevronRight: MdChevronRight,
+  catalog: MdOutlineInventory2,
+  sales: MdOutlinePointOfSale,
+  logout: MdOutlineLogout,
+  filter: MdOutlineFilterList,
+  filterActive: MdFilterList,
+  more: MdMoreVert,
+  visibilityOff: MdOutlineVisibilityOff,
+  visibility: MdOutlineVisibility,
 } as const;
 
 export type IconName = keyof typeof Icons;

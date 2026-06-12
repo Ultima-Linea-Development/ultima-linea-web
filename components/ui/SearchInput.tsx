@@ -37,8 +37,19 @@ export default function SearchInput({ className, onBlur, onSubmit }: SearchInput
             onChange={(e) => setQuery(e.target.value)}
             onBlur={onBlur}
             placeholder="Buscar..."
-            style={{ paddingRight: "2.75rem" }}
+            style={{ paddingRight: query ? "5rem" : "2.75rem" }}
           />
+          {query && (
+            <button
+              type="button"
+              className="absolute right-10 top-1/2 -translate-y-1/2 cursor-pointer rounded-md p-1 text-gray-500 transition-colors hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              aria-label="Limpiar búsqueda"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setQuery("")}
+            >
+              <Icon name="close" size={20} />
+            </button>
+          )}
           <button
             type="submit"
             className="absolute right-1 top-1/2 -translate-y-1/2 cursor-pointer rounded-md p-1 text-gray-500 transition-colors hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

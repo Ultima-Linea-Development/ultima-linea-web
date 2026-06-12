@@ -40,7 +40,7 @@ const backgroundStyles: Record<InputBackground, string> = {
 };
 
 const sizeStyles: Record<InputSize, string> = {
-  sm: "text-sm",
+  sm: "text-base md:text-sm",
   default: "text-base",
 };
 

@@ -39,6 +39,19 @@ export type Product = {
   deleted_at?: Date;
 };
 
+export type Sale = {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_sku?: string;
+  size: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  created_at: Date;
+  updated_at: Date;
+};
+
 export function generateSlug(text: string): string {
   const normalized = text
     .toLowerCase()
@@ -137,6 +150,7 @@ export function beforeCreateProduct(product: Partial<Product>): Product {
 
 export type UserDocument = Omit<User, "id"> & { _id: string };
 export type ProductDocument = Omit<Product, "id"> & { _id: string };
+export type SaleDocument = Omit<Sale, "id"> & { _id: string };
 
 export function userFromDoc(doc: UserDocument): User {
   const { _id, password, ...rest } = doc;
@@ -148,6 +162,11 @@ export function productFromDoc(doc: ProductDocument): Product {
   return { id: _id, ...rest };
 }
 
+export function saleFromDoc(doc: SaleDocument): Sale {
+  const { _id, ...rest } = doc;
+  return { id: _id, ...rest };
+}
+
 export function userToDoc(user: User): UserDocument {
   const { id, ...rest } = user;
   return { _id: id, ...rest };
@@ -155,5 +174,10 @@ export function userToDoc(user: User): UserDocument {
 
 export function productToDoc(product: Product): ProductDocument {
   const { id, ...rest } = product;
+  return { _id: id, ...rest };
+}
+
+export function saleToDoc(sale: Sale): SaleDocument {
+  const { id, ...rest } = sale;
   return { _id: id, ...rest };
 }

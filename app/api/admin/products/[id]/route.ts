@@ -13,9 +13,35 @@ import {
   requireAuth,
 } from "@/lib/server/auth-middleware";
 import { deleteProductImages } from "@/lib/server/storage";
-import { getNextSKUVariant, sumStockBySizes } from "@/lib/server/products";
+import {
+  findProductByIdOrSlugOrSku,
+  getNextSKUVariant,
+  sumStockBySizes,
+  toProductResponse,
+} from "@/lib/server/products";
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(request: NextRequest, context: RouteContext) {
+  const auth = requireAdmin(requireAuth(request));
+  if (isNextResponse(auth)) return auth;
+
+  try {
+    await ensureIndexes();
+
+    const { id } = await context.params;
+    const collection = await getProductsCollection<ProductDocument>();
+    const product = await findProductByIdOrSlugOrSku(collection, id, false);
+
+    if (!product) {
+      return jsonError("Product not found", 404);
+    }
+
+    return NextResponse.json(toProductResponse(product, product.image_urls.length));
+  } catch {
+    return jsonError("Failed to fetch product", 500);
+  }
+}
 
 export async function PUT(request: NextRequest, context: RouteContext) {
   const auth = requireAdmin(requireAuth(request));
@@ -59,14 +85,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
     if (updates.price > 0) setFields.price = updates.price;
 
-    if (updates.stock_by_sizes && Object.keys(updates.stock_by_sizes).length > 0) {
+    if (updates.stock_by_sizes !== undefined) {
       setFields.stock_by_sizes = updates.stock_by_sizes;
       setFields.stock = sumStockBySizes(updates.stock_by_sizes);
     } else if (updates.stock >= 0) {
       setFields.stock = updates.stock;
     }
 
-    if (updates.sizes?.length > 0) setFields.sizes = updates.sizes;
+    if (updates.sizes !== undefined) setFields.sizes = updates.sizes;
     if (updates.size) setFields.size = updates.size;
     if (updates.image_urls?.length > 0) setFields.image_urls = updates.image_urls;
     if (updates.category) setFields.category = updates.category;
