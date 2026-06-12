@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  ultima_linea_front:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://ultimalinea.com.ar}
+    container_name: ultima_linea_front
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - ultima_linea_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=ultima-linea-backend_camisetas_network"
+      - "traefik.http.routers.ultima_front.rule=Host(`ultimalinea.com.ar`)"
+      - "traefik.http.routers.ultima_front.entrypoints=websecure"
+      - "traefik.http.routers.ultima_front.tls=true"
+      - "traefik.http.routers.ultima_front.tls.certresolver=le"
+      - "traefik.http.services.ultima_front.loadbalancer.server.port=3000"
+
+networks:
+  ultima_linea_net:
+    external: true
+    name: ultima-linea-backend_camisetas_network
