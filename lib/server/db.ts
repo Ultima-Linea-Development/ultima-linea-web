@@ -27,8 +27,8 @@ function getDatabaseName(): string {
 async function connect(): Promise<MongoClient> {
   const uri = buildMongoUri();
   const client = new MongoClient(uri, {
-    maxPoolSize: 100,
-    minPoolSize: 10,
+    maxPoolSize: 10,
+    minPoolSize: 1,
     maxIdleTimeMS: 5 * 60 * 1000,
     serverSelectionTimeoutMS: 10_000,
   });
@@ -39,13 +39,10 @@ async function connect(): Promise<MongoClient> {
 }
 
 function getClientPromise(): Promise<MongoClient> {
-  if (process.env.NODE_ENV === "development") {
-    if (!global._mongoClientPromise) {
-      global._mongoClientPromise = connect();
-    }
-    return global._mongoClientPromise;
+  if (!global._mongoClientPromise) {
+    global._mongoClientPromise = connect();
   }
-  return connect();
+  return global._mongoClientPromise;
 }
 
 export async function getDb(): Promise<Db> {
