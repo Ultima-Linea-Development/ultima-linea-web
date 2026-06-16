@@ -5,7 +5,7 @@ import {
   isAllowedProductImageFile,
   PRODUCT_IMAGE_FORMATS_LABEL,
 } from "@/lib/product-image-upload";
-import { isCloudinaryTransformSegment } from "@/lib/product-image-url";
+import { isCloudinaryTransformSegment, PRODUCT_IMAGE_UPLOAD_MAX_WIDTH } from "@/lib/product-image-url";
 import { optimizeProductImageBuffer } from "@/lib/server/product-image-process";
 
 const DEFAULT_DIR = "/data/storage";
@@ -119,6 +119,13 @@ async function uploadBufferToCloudinary(
         overwrite: true,
         resource_type: "image",
         format: "webp",
+        transformation: [
+          {
+            width: PRODUCT_IMAGE_UPLOAD_MAX_WIDTH,
+            crop: "limit",
+            quality: 82,
+          },
+        ],
       },
       (error, result) => {
         if (error) {
@@ -147,8 +154,7 @@ async function saveProductImagesToCloudinary(
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    const rawBuffer = Buffer.from(await file.arrayBuffer());
-    const buffer = await optimizeProductImageBuffer(rawBuffer);
+    const buffer = Buffer.from(await file.arrayBuffer());
     const publicId = path.posix.join(CLOUDINARY_FOLDER, relDir, `${product}-${i + 1}`);
     const result = await uploadBufferToCloudinary(buffer, publicId);
     urls.push(result.secure_url);

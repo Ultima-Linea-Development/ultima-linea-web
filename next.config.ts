@@ -8,6 +8,7 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "")
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  serverExternalPackages: ["sharp"],
 
   ...(allowedDevOrigins.length > 0 ? { allowedDevOrigins } : {}),
 

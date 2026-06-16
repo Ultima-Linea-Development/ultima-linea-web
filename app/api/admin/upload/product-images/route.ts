@@ -7,6 +7,8 @@ import {
 } from "@/lib/server/auth-middleware";
 import { saveProductImages } from "@/lib/server/storage";
 
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest) {
   const auth = requireStaff(requireAuth(request));
   if (isNextResponse(auth)) return auth;
