@@ -148,7 +148,7 @@ async function saveProductImagesToCloudinary(
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const rawBuffer = Buffer.from(await file.arrayBuffer());
-    const buffer = await optimizeProductImageBuffer(rawBuffer, file.name);
+    const buffer = await optimizeProductImageBuffer(rawBuffer);
     const publicId = path.posix.join(CLOUDINARY_FOLDER, relDir, `${product}-${i + 1}`);
     const result = await uploadBufferToCloudinary(buffer, publicId);
     urls.push(result.secure_url);
@@ -174,7 +174,7 @@ async function saveProductImagesToLocal(
     const name = `${product}-${i + 1}.webp`;
     const dstPath = path.join(absDir, name);
     const rawBuffer = Buffer.from(await file.arrayBuffer());
-    const buffer = await optimizeProductImageBuffer(rawBuffer, file.name);
+    const buffer = await optimizeProductImageBuffer(rawBuffer);
     await fs.writeFile(dstPath, buffer);
 
     const urlPath = `/${path.posix.join(relDir, name)}`;

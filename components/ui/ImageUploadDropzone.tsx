@@ -27,7 +27,7 @@ export default function ImageUploadDropzone({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
-  const { previewUrls, isPreparing } = useProductImagePreviewUrls(files);
+  const previewUrls = useProductImagePreviewUrls(files);
 
   const addFiles = useCallback(
     (newFiles: FileList | null) => {
@@ -150,15 +150,12 @@ export default function ImageUploadDropzone({
       {files.length > 0 && (
         <div className="space-y-2">
           <Typography variant="body2" color="muted">
-            {isPreparing
-              ? "Preparando vista previa..."
-              : "Vista previa. Arrastrá para reordenar antes de guardar."}
+            Vista previa. Arrastrá para reordenar antes de guardar.
           </Typography>
           <SortableImageGrid
             items={previewItems}
             onReorder={handlePreviewReorder}
             onRemove={removeFile}
-            preparing={isPreparing}
             itemClassName="h-24 w-24 sm:h-28 sm:w-28"
           />
         </div>

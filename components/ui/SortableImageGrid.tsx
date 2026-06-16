@@ -16,7 +16,6 @@ type SortableImageTileProps = {
   item: SortableImageItem;
   index: number;
   showOrderBadge: boolean;
-  preparing?: boolean;
   onRemove?: (index: number) => void;
 };
 
@@ -24,12 +23,10 @@ function SortableImageTile({
   item,
   index,
   showOrderBadge,
-  preparing = false,
   onRemove,
 }: SortableImageTileProps) {
   const [hasError, setHasError] = useState(false);
-  const isLoading = preparing && !item.src;
-  const showPlaceholder = !isLoading && (!item.src || hasError);
+  const showPlaceholder = !item.src || hasError;
 
   useEffect(() => {
     setHasError(false);
@@ -37,12 +34,7 @@ function SortableImageTile({
 
   return (
     <>
-      {isLoading ? (
-        <div
-          className="h-full w-full animate-pulse bg-muted-foreground/15"
-          aria-label="Cargando vista previa"
-        />
-      ) : showPlaceholder ? (
+      {showPlaceholder ? (
         <div className="flex h-full w-full items-center justify-center p-1 text-center">
           <Typography variant="body2" color="muted" className="line-clamp-3 text-[10px]">
             {item.alt ?? `Imagen ${index + 1}`}
@@ -91,7 +83,6 @@ type SortableImageGridProps = {
   className?: string;
   itemClassName?: string;
   showOrderBadge?: boolean;
-  preparing?: boolean;
 };
 
 export default function SortableImageGrid({
@@ -101,7 +92,6 @@ export default function SortableImageGrid({
   className,
   itemClassName,
   showOrderBadge = false,
-  preparing = false,
 }: SortableImageGridProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -185,7 +175,6 @@ export default function SortableImageGrid({
             item={item}
             index={index}
             showOrderBadge={showOrderBadge}
-            preparing={preparing}
             onRemove={onRemove}
           />
         </div>

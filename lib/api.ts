@@ -704,27 +704,6 @@ export const adminSalesApi = {
 export const adminUploadApi = {
   uploadProductImages: (formData: FormData, token: string) =>
     requestFormData<UploadProductImagesResponse>("/admin/upload/product-images", formData, token),
-
-  previewProductImage: async (file: File, token: string): Promise<Blob | null> => {
-    const formData = new FormData();
-    formData.append("image", file);
-
-    try {
-      const response = await fetch(
-        `${getDirectApiUrl()}/admin/upload/product-image-preview`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        }
-      );
-
-      if (!response.ok) return null;
-      return response.blob();
-    } catch {
-      return null;
-    }
-  },
 };
 
 export const adminProfileApi = {
