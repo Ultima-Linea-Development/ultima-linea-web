@@ -1,15 +1,88 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { cn, reorderArray } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/Icons";
+import Typography from "@/components/ui/Typography";
 
 export type SortableImageItem = {
   id: string;
   src: string;
   alt?: string;
 };
+
+type SortableImageTileProps = {
+  item: SortableImageItem;
+  index: number;
+  showOrderBadge: boolean;
+  preparing?: boolean;
+  onRemove?: (index: number) => void;
+};
+
+function SortableImageTile({
+  item,
+  index,
+  showOrderBadge,
+  preparing = false,
+  onRemove,
+}: SortableImageTileProps) {
+  const [hasError, setHasError] = useState(false);
+  const isLoading = preparing && !item.src;
+  const showPlaceholder = !isLoading && (!item.src || hasError);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [item.src]);
+
+  return (
+    <>
+      {isLoading ? (
+        <div
+          className="h-full w-full animate-pulse bg-muted-foreground/15"
+          aria-label="Cargando vista previa"
+        />
+      ) : showPlaceholder ? (
+        <div className="flex h-full w-full items-center justify-center p-1 text-center">
+          <Typography variant="body2" color="muted" className="line-clamp-3 text-[10px]">
+            {item.alt ?? `Imagen ${index + 1}`}
+          </Typography>
+        </div>
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={item.src}
+          alt={item.alt ?? `Imagen ${index + 1}`}
+          className="pointer-events-none h-full w-full object-cover"
+          draggable={false}
+          onError={() => setHasError(true)}
+        />
+      )}
+      {showOrderBadge && index === 0 && (
+        <span className="absolute bottom-0 left-0 bg-black/70 px-1 text-[10px] text-white">
+          Principal
+        </span>
+      )}
+      {showOrderBadge && index === 1 && (
+        <span className="absolute bottom-0 left-0 bg-black/70 px-1 text-[10px] text-white">
+          Secundaria
+        </span>
+      )}
+      {onRemove && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Quitar imagen"
+          className="absolute top-0 right-0 h-6 w-6 bg-black/60 text-white hover:bg-black/80"
+          onClick={() => onRemove(index)}
+        >
+          <Icon name="close" className="size-3" />
+        </Button>
+      )}
+    </>
+  );
+}
 
 type SortableImageGridProps = {
   items: SortableImageItem[];
@@ -18,6 +91,7 @@ type SortableImageGridProps = {
   className?: string;
   itemClassName?: string;
   showOrderBadge?: boolean;
+  preparing?: boolean;
 };
 
 export default function SortableImageGrid({
@@ -27,6 +101,7 @@ export default function SortableImageGrid({
   className,
   itemClassName,
   showOrderBadge = false,
+  preparing = false,
 }: SortableImageGridProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -106,35 +181,13 @@ export default function SortableImageGrid({
             itemClassName
           )}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.src}
-            alt={item.alt ?? `Imagen ${index + 1}`}
-            className="pointer-events-none h-full w-full object-cover"
-            draggable={false}
+          <SortableImageTile
+            item={item}
+            index={index}
+            showOrderBadge={showOrderBadge}
+            preparing={preparing}
+            onRemove={onRemove}
           />
-          {showOrderBadge && index === 0 && (
-            <span className="absolute bottom-0 left-0 bg-black/70 px-1 text-[10px] text-white">
-              Principal
-            </span>
-          )}
-          {showOrderBadge && index === 1 && (
-            <span className="absolute bottom-0 left-0 bg-black/70 px-1 text-[10px] text-white">
-              Secundaria
-            </span>
-          )}
-          {onRemove && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Quitar imagen"
-              className="absolute top-0 right-0 h-6 w-6 bg-black/60 text-white hover:bg-black/80"
-              onClick={() => onRemove(index)}
-            >
-              <Icon name="close" className="size-3" />
-            </Button>
-          )}
         </div>
       ))}
     </div>

@@ -1,6 +1,12 @@
 import fs from "fs/promises";
 import path from "path";
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
+import {
+  isAllowedProductImageFile,
+  PRODUCT_IMAGE_FORMATS_LABEL,
+} from "@/lib/product-image-upload";
+import { isCloudinaryTransformSegment } from "@/lib/product-image-url";
+import { optimizeProductImageBuffer } from "@/lib/server/product-image-process";
 
 const DEFAULT_DIR = "/data/storage";
 const DEFAULT_URL = "https://storage.ultimalinea.com.ar";
@@ -8,8 +14,6 @@ const CLOUDINARY_FOLDER = "ultima-linea";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_TOTAL_SIZE = 50 * 1024 * 1024;
 const MAX_FILES_PER_BATCH = 10;
-
-const ALLOWED_EXT = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 export type StorageConfig = {
   dir: string;
@@ -75,9 +79,10 @@ function assertFilesAreValid(files: File[]): void {
 
   let totalSize = 0;
   for (const file of files) {
-    const ext = path.extname(file.name).toLowerCase();
-    if (!ALLOWED_EXT.has(ext)) {
-      throw new Error(`archivo "${file.name}": solo se permiten .jpg, .jpeg, .png, .webp`);
+    if (!isAllowedProductImageFile(file)) {
+      throw new Error(
+        `archivo "${file.name}": solo se permiten ${PRODUCT_IMAGE_FORMATS_LABEL}`
+      );
     }
     if (file.size > MAX_FILE_SIZE) {
       throw new Error(`archivo "${file.name}" supera el límite de 10 MiB`);
@@ -113,6 +118,7 @@ async function uploadBufferToCloudinary(
         public_id: publicId,
         overwrite: true,
         resource_type: "image",
+        format: "webp",
       },
       (error, result) => {
         if (error) {
@@ -141,7 +147,8 @@ async function saveProductImagesToCloudinary(
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const rawBuffer = Buffer.from(await file.arrayBuffer());
+    const buffer = await optimizeProductImageBuffer(rawBuffer, file.name);
     const publicId = path.posix.join(CLOUDINARY_FOLDER, relDir, `${product}-${i + 1}`);
     const result = await uploadBufferToCloudinary(buffer, publicId);
     urls.push(result.secure_url);
@@ -164,10 +171,10 @@ async function saveProductImagesToLocal(
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    const ext = path.extname(file.name).toLowerCase();
-    const name = `${product}-${i + 1}${ext}`;
+    const name = `${product}-${i + 1}.webp`;
     const dstPath = path.join(absDir, name);
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const rawBuffer = Buffer.from(await file.arrayBuffer());
+    const buffer = await optimizeProductImageBuffer(rawBuffer, file.name);
     await fs.writeFile(dstPath, buffer);
 
     const urlPath = `/${path.posix.join(relDir, name)}`;
@@ -233,6 +240,14 @@ function parseCloudinaryPublicId(imageUrl: string): string | null {
     if (uploadIndex === -1) return null;
 
     const publicIdSegments = segments.slice(uploadIndex + 1);
+
+    while (
+      publicIdSegments.length > 0 &&
+      isCloudinaryTransformSegment(publicIdSegments[0])
+    ) {
+      publicIdSegments.shift();
+    }
+
     if (publicIdSegments[0]?.startsWith("v")) {
       publicIdSegments.shift();
     }

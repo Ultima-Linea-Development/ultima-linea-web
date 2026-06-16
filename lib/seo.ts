@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 import type { Product } from "@/lib/api";
+import {
+  optimizeProductImageUrl,
+  optimizeProductImageUrls,
+  PRODUCT_IMAGE_GALLERY_WIDTH,
+} from "@/lib/product-image-url";
 import { generateSlug } from "@/lib/utils";
 
 export const PUBLIC_STATIC_PATHS = [
@@ -90,7 +95,9 @@ export function buildProductMetadata(
     ? `${siteOrigin}/product/${canonicalPath}`
     : undefined;
   const description = buildProductDescription(product);
-  const imageUrl = product.image_urls?.[0];
+  const imageUrl = product.image_urls?.[0]
+    ? optimizeProductImageUrl(product.image_urls[0], PRODUCT_IMAGE_GALLERY_WIDTH)
+    : undefined;
 
   return {
     title: product.name,
@@ -158,7 +165,14 @@ export function buildProductJsonLd(
     "@type": "Product",
     name: product.name,
     description: buildProductDescription(product),
-    ...(product.image_urls?.length ? { image: product.image_urls } : {}),
+    ...(product.image_urls?.length
+      ? {
+          image: optimizeProductImageUrls(
+            product.image_urls,
+            PRODUCT_IMAGE_GALLERY_WIDTH
+          ),
+        }
+      : {}),
     brand: {
       "@type": "Brand",
       name: product.team || "Última Línea",

@@ -9,6 +9,12 @@ import Box from "@/components/layout/Box";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/Icons";
 import Lightbox from "@/components/ui/Lightbox";
+import {
+  optimizeProductImageUrl,
+  optimizeProductImageUrls,
+  PRODUCT_IMAGE_GALLERY_WIDTH,
+  PRODUCT_IMAGE_LIGHTBOX_WIDTH,
+} from "@/lib/product-image-url";
 import { cn } from "@/lib/utils";
 
 const ZOOM_SCALE = 1.75;
@@ -185,6 +191,10 @@ export default function ProductImageGallery({
 
   if (imageUrls.length === 0) return null;
 
+  const lightboxImages = optimizeProductImageUrls(
+    imageUrls,
+    PRODUCT_IMAGE_LIGHTBOX_WIDTH
+  );
   const hasToggle = imageUrls.length > 4;
   const alwaysVisibleImages = hasToggle ? imageUrls.slice(0, 2) : imageUrls;
   const desktopCollapsedImages = hasToggle ? imageUrls.slice(2, 4) : [];
@@ -196,7 +206,7 @@ export default function ProductImageGallery({
         {alwaysVisibleImages.map((url, index) => (
           <ZoomableImage
             key={url}
-            url={url}
+            url={optimizeProductImageUrl(url, PRODUCT_IMAGE_GALLERY_WIDTH)}
             alt={`${productName} - imagen ${index + 1}`}
             priority={index === 0}
             onClick={() => openLightbox(index)}
@@ -211,7 +221,7 @@ export default function ProductImageGallery({
             return (
               <ZoomableImage
                 key={url}
-                url={url}
+                url={optimizeProductImageUrl(url, PRODUCT_IMAGE_GALLERY_WIDTH)}
                 alt={`${productName} - imagen ${imageIndex + 1}`}
                 priority={false}
                 onClick={() => openLightbox(imageIndex)}
@@ -237,7 +247,7 @@ export default function ProductImageGallery({
               return (
                 <ZoomableImage
                   key={url}
-                  url={url}
+                  url={optimizeProductImageUrl(url, PRODUCT_IMAGE_GALLERY_WIDTH)}
                   alt={`${productName} - imagen ${imageIndex + 1}`}
                   priority={false}
                   onClick={() => openLightbox(imageIndex)}
@@ -273,7 +283,7 @@ export default function ProductImageGallery({
       <Lightbox
         open={lightboxOpen}
         onClose={closeLightbox}
-        images={imageUrls}
+        images={lightboxImages}
         currentIndex={lightboxIndex}
         onPrev={imageUrls.length > 1 ? goPrev : undefined}
         onNext={imageUrls.length > 1 ? goNext : undefined}

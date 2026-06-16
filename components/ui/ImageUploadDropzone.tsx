@@ -1,16 +1,17 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { useRef, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import Typography from "@/components/ui/Typography";
 import SortableImageGrid, { type SortableImageItem } from "@/components/ui/SortableImageGrid";
+import {
+  isAllowedProductImageFile,
+  PRODUCT_IMAGE_ACCEPT_ATTRIBUTE,
+  PRODUCT_IMAGE_FORMATS_LABEL,
+} from "@/lib/product-image-upload";
+import { useProductImagePreviewUrls } from "@/lib/hooks/use-product-image-preview-urls";
 
-const ACCEPT_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const MAX_FILES = 20;
-
-function isImageFile(file: File): boolean {
-  return ACCEPT_TYPES.includes(file.type.toLowerCase());
-}
 
 type ImageUploadDropzoneProps = {
   files: File[];
@@ -26,23 +27,15 @@ export default function ImageUploadDropzone({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
-  const previewUrls = useMemo(
-    () => files.map((f) => URL.createObjectURL(f)),
-    [files]
-  );
-
-  useEffect(() => {
-    const urls = previewUrls;
-    return () => urls.forEach(URL.revokeObjectURL);
-  }, [previewUrls]);
+  const { previewUrls, isPreparing } = useProductImagePreviewUrls(files);
 
   const addFiles = useCallback(
     (newFiles: FileList | null) => {
       if (!newFiles?.length) return;
 
-      const allowed = Array.from(newFiles).filter(isImageFile);
+      const allowed = Array.from(newFiles).filter(isAllowedProductImageFile);
       if (allowed.length === 0) {
-        setError("Solo se permiten imágenes JPG, PNG o WebP.");
+        setError(`Solo se permiten imágenes ${PRODUCT_IMAGE_FORMATS_LABEL}.`);
         return;
       }
 
@@ -97,7 +90,7 @@ export default function ImageUploadDropzone({
 
   const previewItems: SortableImageItem[] = files.map((file, index) => ({
     id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
-    src: previewUrls[index],
+    src: previewUrls[index] ?? "",
     alt: file.name,
   }));
 
@@ -134,7 +127,7 @@ export default function ImageUploadDropzone({
         <input
           ref={inputRef}
           type="file"
-          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+          accept={PRODUCT_IMAGE_ACCEPT_ATTRIBUTE}
           multiple
           onChange={handleChange}
           className="sr-only"
@@ -144,7 +137,7 @@ export default function ImageUploadDropzone({
           Arrastrá imágenes aquí o hacé clic para elegir
         </Typography>
         <Typography variant="body2" color="muted">
-          JPG, PNG o WebP. Máx. {MAX_FILES} imágenes.
+          {PRODUCT_IMAGE_FORMATS_LABEL}. Máx. {MAX_FILES} imágenes.
         </Typography>
       </div>
 
@@ -157,12 +150,15 @@ export default function ImageUploadDropzone({
       {files.length > 0 && (
         <div className="space-y-2">
           <Typography variant="body2" color="muted">
-            Vista previa. Arrastrá para reordenar antes de guardar.
+            {isPreparing
+              ? "Preparando vista previa..."
+              : "Vista previa. Arrastrá para reordenar antes de guardar."}
           </Typography>
           <SortableImageGrid
             items={previewItems}
             onReorder={handlePreviewReorder}
             onRemove={removeFile}
+            preparing={isPreparing}
             itemClassName="h-24 w-24 sm:h-28 sm:w-28"
           />
         </div>
