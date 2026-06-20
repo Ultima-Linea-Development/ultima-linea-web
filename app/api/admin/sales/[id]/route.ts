@@ -12,6 +12,7 @@ import { toProductResponse } from "@/lib/server/products";
 import { adjustProductStock } from "@/lib/server/sales";
 import { parseSaleDateInput } from "@/lib/sale-date";
 import { getSaleLineItemsFromDoc, normalizeSaleForResponse } from "@/lib/server/sale-items";
+import { CreateSaleItemInput, processSaleItem } from "@/lib/server/create-sale";
 import {
   parseOptionalSaleText,
   resolveSaleSellerForUpdate,
@@ -22,14 +23,35 @@ import {
 type RouteContext = { params: Promise<{ id: string }> };
 
 type UpdateSaleBody = {
+  items?: {
+    product_id?: string;
+    size?: string;
+    quantity?: number;
+    unit_price?: number;
+    skip_stock_deduction?: boolean;
+  }[];
   sale_date?: string;
   seller_type?: SaleSellerType;
   created_by?: string;
   external_seller_id?: string;
   external_seller_name?: string;
+  skip_stock_deduction?: boolean;
   transfer_alias?: string;
   description?: string;
 };
+
+function parseUpdateSaleItems(body: UpdateSaleBody): CreateSaleItemInput[] | null {
+  if (!("items" in body)) return null;
+  if (!Array.isArray(body.items)) return [];
+
+  return body.items.map((item) => ({
+    product_id: item.product_id?.trim() ?? "",
+    size: item.size,
+    quantity: Number(item.quantity),
+    unit_price: item.unit_price != null ? Number(item.unit_price) : undefined,
+    skip_stock_deduction: Boolean(item.skip_stock_deduction),
+  }));
+}
 
 export async function PUT(request: NextRequest, context: RouteContext) {
   const auth = requireStaff(requireAuth(request));
@@ -40,6 +62,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
     const body = (await request.json()) as UpdateSaleBody;
+    const itemInputs = parseUpdateSaleItems(body);
     const saleDateInput = body.sale_date?.trim();
     const updateFields: Record<string, unknown> = {
       updated_at: new Date(),
@@ -95,6 +118,83 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       }
     }
 
+    if (itemInputs) {
+      if (itemInputs && itemInputs.length === 0) {
+        return jsonError("Agregá al menos un producto", 400);
+      }
+
+      const sales = await getSalesCollection<SaleDocument>();
+      const currentSale = await sales.findOne({ _id: id });
+      if (!currentSale) return jsonError("Venta no encontrada", 404);
+
+      const products = await getProductsCollection<ProductDocument>();
+      const previousItems = getSaleLineItemsFromDoc(currentSale);
+
+      for (const item of previousItems) {
+        if (item.skip_stock_deduction) continue;
+
+        const restored = await adjustProductStock(products, {
+          productId: item.product_id,
+          size: item.size,
+          quantity: item.quantity,
+          direction: "restore",
+        });
+
+        if (!restored) return jsonError("No se pudo restaurar el stock actual", 409);
+      }
+
+      const nextLineItems = [];
+      const deductedItems = [];
+      let itemProcessingError: { error: string; status: number } | null = null;
+
+      for (const input of itemInputs) {
+        const result = await processSaleItem(products, input, {
+          deductStock: !input.skip_stock_deduction,
+        });
+        if ("error" in result) {
+          itemProcessingError = result;
+          break;
+        }
+
+        nextLineItems.push(result.lineItem);
+        if (!result.lineItem.skip_stock_deduction) deductedItems.push(result.lineItem);
+      }
+
+      if (itemProcessingError) {
+        for (const item of deductedItems) {
+          await adjustProductStock(products, {
+            productId: item.product_id,
+            size: item.size,
+            quantity: item.quantity,
+            direction: "restore",
+          });
+        }
+
+        for (const item of previousItems) {
+          if (item.skip_stock_deduction) continue;
+
+          await adjustProductStock(products, {
+            productId: item.product_id,
+            size: item.size,
+            quantity: item.quantity,
+            direction: "deduct",
+          });
+        }
+
+        return jsonError(itemProcessingError.error, itemProcessingError.status);
+      }
+
+      updateFields.items = nextLineItems;
+      updateFields.total = nextLineItems.reduce((sum, item) => sum + item.total, 0);
+      unsetFields.product_id = "";
+      unsetFields.product_name = "";
+      unsetFields.product_sku = "";
+      unsetFields.size = "";
+      unsetFields.quantity = "";
+      unsetFields.unit_price = "";
+      unsetFields.skip_stock_deduction = "";
+    }
+
     if (
       Object.keys(updateFields).length === 1 &&
       Object.keys(unsetFields).length === 0
@@ -141,6 +241,8 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     const restoredProductIds = new Set<string>();
 
     for (const item of lineItems) {
+      if (item.skip_stock_deduction) continue;
+
       const productDoc = await products.findOne({ _id: item.product_id });
       if (!productDoc) continue;
 

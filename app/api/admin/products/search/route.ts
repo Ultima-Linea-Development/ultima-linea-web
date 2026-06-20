@@ -9,7 +9,6 @@ import {
 } from "@/lib/server/auth-middleware";
 import { toProductResponse } from "@/lib/server/products";
 import {
-  buildAdminCatalogMongoFilter,
   buildAdminSearchTextMatch,
   buildProductSizeFilter,
   parseIsActiveFilterParam,

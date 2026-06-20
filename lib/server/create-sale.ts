@@ -12,6 +12,7 @@ export type CreateSaleItemInput = {
   size?: string;
   quantity: number;
   unit_price?: number;
+  skip_stock_deduction?: boolean;
 };
 
 type ProcessSaleItemResult = {
@@ -19,10 +20,16 @@ type ProcessSaleItemResult = {
   updatedProduct: Product | null;
 };
 
+type ProcessSaleItemOptions = {
+  deductStock?: boolean;
+};
+
 export async function processSaleItem(
   products: Collection<ProductDocument>,
-  input: CreateSaleItemInput
+  input: CreateSaleItemInput,
+  options: ProcessSaleItemOptions = {}
 ): Promise<ProcessSaleItemResult | { error: string; status: number }> {
+  const deductStock = options.deductStock ?? true;
   const productId = input.product_id.trim();
   const requestedSize = input.size?.trim() ?? "";
   const quantity = input.quantity;
@@ -61,7 +68,7 @@ export async function processSaleItem(
   const deductQty = Math.min(quantity, availableStock);
   let updatedProduct: Product | null = null;
 
-  if (deductQty > 0) {
+  if (deductStock && deductQty > 0) {
     const filter: Record<string, unknown> = {
       _id: productId,
       is_active: true,
@@ -93,6 +100,7 @@ export async function processSaleItem(
     quantity,
     unit_price: unitPrice,
     total: unitPrice * quantity,
+    skip_stock_deduction: Boolean(input.skip_stock_deduction),
   };
 
   return { lineItem, updatedProduct };

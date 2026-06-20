@@ -253,11 +253,11 @@ export function useAdminSalesPanel() {
 
       setSuccess("Venta actualizada correctamente.");
       setEditingSale(null);
-      await loadSales();
+      await Promise.all([loadSales(), loadSaleCatalog()]);
       setIsEditSubmitting(false);
       return true;
     },
-    [editingSale, loadSales, flushPendingDelete]
+    [editingSale, loadSales, loadSaleCatalog, flushPendingDelete]
   );
 
   const handleConfirmDelete = useCallback(async () => {

@@ -46,6 +46,7 @@ function createLineItemDraft(product: Product): SaleLineItemDraft {
     size: "",
     quantity: "1",
     unitPrice: String(product.price),
+    skipStockDeduction: false,
   };
 }
 
@@ -86,7 +87,7 @@ export default function AdminSaleForm({
 
   const updateLineItem = (
     key: string,
-    updates: Partial<Pick<SaleLineItemDraft, "size" | "quantity" | "unitPrice">>
+    updates: Partial<Pick<SaleLineItemDraft, "size" | "quantity" | "unitPrice" | "skipStockDeduction">>
   ) => {
     setLineItems((prev) =>
       prev.map((item) => (item.key === key ? { ...item, ...updates } : item))
@@ -158,6 +159,7 @@ export default function AdminSaleForm({
         size: item.size,
         quantity: Number(item.quantity),
         unit_price: Number(item.unitPrice),
+        skip_stock_deduction: item.skipStockDeduction,
       })),
       sale_date: saleDateApiValue,
       ...saleSellerValueToPayload(sellerValue, canAssignUser),

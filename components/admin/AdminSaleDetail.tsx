@@ -147,6 +147,11 @@ export default function AdminSaleDetail({
                 <AdminTableMobileField label="Subtotal">
                   <Typography variant="body2">{formatPrice(item.total)}</Typography>
                 </AdminTableMobileField>
+                {item.skip_stock_deduction && (
+                  <AdminTableMobileField label="Stock" fullWidth>
+                    <Typography variant="body2">No descontado</Typography>
+                  </AdminTableMobileField>
+                )}
                 {item.product_sku && (
                   <AdminTableMobileField label="SKU" fullWidth>
                     <Typography variant="body2">{item.product_sku}</Typography>
@@ -200,6 +205,11 @@ export default function AdminSaleDetail({
                     {item.product_sku && (
                       <Typography variant="caption" color="muted">
                         SKU {item.product_sku}
+                      </Typography>
+                    )}
+                    {item.skip_stock_deduction && (
+                      <Typography variant="caption" color="muted">
+                        Stock no descontado
                       </Typography>
                     )}
                   </Box>

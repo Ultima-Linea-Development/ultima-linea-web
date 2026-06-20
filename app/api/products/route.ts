@@ -4,7 +4,7 @@ import { ProductDocument, productFromDoc } from "@/lib/server/models";
 import { jsonError } from "@/lib/server/auth-middleware";
 import { ensureProductSlugs, toProductResponse } from "@/lib/server/products";
 import { buildProductSizeFilter } from "@/lib/admin-catalog-filters";
-import { escapeRegex } from "@/lib/utils";
+import { buildFlexibleSearchRegexPattern } from "@/lib/search-normalization";
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get("league");
     const size = searchParams.get("size");
 
-    if (team) filter.team = { $regex: escapeRegex(team), $options: "i" };
+    if (team) filter.team = { $regex: buildFlexibleSearchRegexPattern(team), $options: "i" };
     if (league) filter.league = league;
     if (size) Object.assign(filter, buildProductSizeFilter(size));
 

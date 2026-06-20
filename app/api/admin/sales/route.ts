@@ -34,6 +34,7 @@ type CreateSaleItemBody = {
   size?: string;
   quantity?: number;
   unit_price?: number;
+  skip_stock_deduction?: boolean;
 };
 
 type CreateSaleBody = {
@@ -46,6 +47,7 @@ type CreateSaleBody = {
   created_by?: string;
   external_seller_id?: string;
   external_seller_name?: string;
+  skip_stock_deduction?: boolean;
   transfer_alias?: string;
   description?: string;
 };
@@ -57,6 +59,7 @@ function parseCreateSaleItems(body: CreateSaleBody): CreateSaleItemInput[] {
       size: item.size,
       quantity: Number(item.quantity),
       unit_price: item.unit_price != null ? Number(item.unit_price) : undefined,
+      skip_stock_deduction: Boolean(item.skip_stock_deduction),
     }));
   }
 
@@ -66,6 +69,7 @@ function parseCreateSaleItems(body: CreateSaleBody): CreateSaleItemInput[] {
         product_id: body.product_id.trim(),
         size: body.size,
         quantity: Number(body.quantity),
+        skip_stock_deduction: Boolean(body.skip_stock_deduction),
       },
     ];
   }
@@ -128,14 +132,24 @@ export async function POST(request: NextRequest) {
     const lineItems = [];
     const updatedProductIds = new Set<string>();
     const updatedProducts = [];
+    const legacySkipStockDeduction = Boolean(body.skip_stock_deduction);
 
     for (const input of itemInputs) {
-      const result = await processSaleItem(products, input);
+      const inputWithLegacySkip = {
+        ...input,
+        skip_stock_deduction: input.skip_stock_deduction || legacySkipStockDeduction,
+      };
+      const result = await processSaleItem(products, input, {
+        deductStock: !inputWithLegacySkip.skip_stock_deduction,
+      });
       if ("error" in result) {
         return jsonError(result.error, result.status);
       }
 
-      lineItems.push(result.lineItem);
+      lineItems.push({
+        ...result.lineItem,
+        skip_stock_deduction: inputWithLegacySkip.skip_stock_deduction,
+      });
 
       if (result.updatedProduct && !updatedProductIds.has(result.updatedProduct.id)) {
         updatedProductIds.add(result.updatedProduct.id);

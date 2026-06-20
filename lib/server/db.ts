@@ -14,18 +14,32 @@ declare global {
 
 function buildMongoUri(): string {
   const uri = process.env.MONGODB_URI;
-  if (uri) return uri;
+  if (uri) return resolveLocalMongoUri(uri);
 
   const user = process.env.MONGODB_USER;
   const password = process.env.MONGODB_PASSWORD;
   const host = process.env.MONGODB_HOST;
   const port = process.env.MONGODB_PORT;
 
-  return `mongodb://${user}:${password}@${host}:${port}/?authSource=admin`;
+  return resolveLocalMongoUri(`mongodb://${user}:${password}@${host}:${port}/?authSource=admin`);
 }
 
 function getDatabaseName(): string {
   return process.env.MONGODB_DATABASE || "camisetas";
+}
+
+function resolveLocalMongoUri(uri: string): string {
+  if (process.env.NODE_ENV === "production") return uri;
+
+  try {
+    const parsed = new URL(uri);
+    if (parsed.hostname !== "mongodb") return uri;
+
+    parsed.hostname = "localhost";
+    return parsed.toString();
+  } catch {
+    return uri.replace("@mongodb:", "@localhost:");
+  }
 }
 
 async function connect(): Promise<MongoClient> {

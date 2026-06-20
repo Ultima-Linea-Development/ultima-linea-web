@@ -4,9 +4,13 @@ import { saleFromDoc } from "@/lib/server/models";
 
 export function getSaleLineItemsFromDoc(doc: SaleDocument): SaleLineItem[] {
   const sale = saleFromDoc(doc);
+  const legacySkipStockDeduction = Boolean(sale.skip_stock_deduction);
 
   if (sale.items && sale.items.length > 0) {
-    return sale.items;
+    return sale.items.map((item) => ({
+      ...item,
+      skip_stock_deduction: item.skip_stock_deduction ?? legacySkipStockDeduction,
+    }));
   }
 
   if (!sale.product_id || !sale.product_name) {
@@ -25,6 +29,7 @@ export function getSaleLineItemsFromDoc(doc: SaleDocument): SaleLineItem[] {
       quantity,
       unit_price: unitPrice,
       total: sale.total ?? unitPrice * quantity,
+      skip_stock_deduction: legacySkipStockDeduction,
     },
   ];
 }

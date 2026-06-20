@@ -1,4 +1,4 @@
-import { escapeRegex } from "@/lib/utils";
+import { buildFlexibleSearchRegexPattern } from "@/lib/search-normalization";
 
 export function parseIsActiveFilterParam(value: string | null): boolean | undefined {
   if (value === "true") return true;
@@ -16,7 +16,7 @@ export function buildAdminCatalogMongoFilter(
   const size = searchParams.get("size");
   const isActive = parseIsActiveFilterParam(searchParams.get("is_active"));
 
-  if (team) filter.team = { $regex: escapeRegex(team), $options: "i" };
+  if (team) filter.team = { $regex: buildFlexibleSearchRegexPattern(team), $options: "i" };
   if (league) filter.league = league;
   if (size) Object.assign(filter, buildProductSizeFilter(size));
   if (isActive !== undefined) filter.is_active = isActive;
@@ -25,7 +25,7 @@ export function buildAdminCatalogMongoFilter(
 }
 
 export function buildAdminSearchTextMatch(query: string): Record<string, unknown> {
-  const pattern = escapeRegex(query);
+  const pattern = buildFlexibleSearchRegexPattern(query);
   return {
     $or: [
       { name: { $regex: pattern, $options: "i" } },

@@ -223,6 +223,7 @@ export type SaleLineItem = {
   quantity: number;
   unit_price: number;
   total: number;
+  skip_stock_deduction?: boolean;
 };
 
 export type SaleSellerType = "internal" | "external";
@@ -425,6 +426,7 @@ export type Sale = {
   id: string;
   items: SaleLineItem[];
   total: number;
+  skip_stock_deduction?: boolean;
   created_by?: string;
   external_seller_id?: string;
   external_seller_name?: string;
@@ -451,10 +453,12 @@ export type CreateSaleItemRequest = {
   size?: string;
   quantity: number;
   unit_price?: number;
+  skip_stock_deduction?: boolean;
 };
 
 export type CreateSaleRequest = {
   items: CreateSaleItemRequest[];
+  skip_stock_deduction?: boolean;
   sale_date?: string;
   seller_type?: SaleSellerType;
   created_by?: string;
@@ -465,6 +469,8 @@ export type CreateSaleRequest = {
 };
 
 export type UpdateSaleRequest = {
+  items?: CreateSaleItemRequest[];
+  skip_stock_deduction?: boolean;
   sale_date?: string;
   seller_type?: SaleSellerType;
   created_by?: string;

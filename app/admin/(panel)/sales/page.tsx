@@ -114,6 +114,7 @@ export default function AdminSalesPage() {
         >
           <AdminSaleEditForm
             sale={panel.editingSale}
+            products={panel.products}
             assignableUsers={panel.assignableUsers}
             externalSellers={panel.externalSellers}
             currentUserId={panel.getCurrentUserId()}

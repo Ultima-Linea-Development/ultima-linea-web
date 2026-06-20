@@ -49,6 +49,7 @@ export type SaleLineItem = {
   quantity: number;
   unit_price: number;
   total: number;
+  skip_stock_deduction?: boolean;
 };
 
 export type ExternalSeller = {
@@ -138,6 +139,7 @@ export type Sale = {
   id: string;
   items?: SaleLineItem[];
   total: number;
+  skip_stock_deduction?: boolean;
   created_by?: string;
   external_seller_id?: string;
   external_seller_name?: string;
