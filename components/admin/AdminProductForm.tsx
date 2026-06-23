@@ -9,7 +9,9 @@ import { InlineAlert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/button";
 import ImageUploadDropzone from "@/components/ui/ImageUploadDropzone";
 import ProductSizeStockFields from "@/components/admin/ProductSizeStockFields";
-import AdminProductIdentityFields from "@/components/admin/AdminProductIdentityFields";
+import AdminProductIdentityFields, {
+  type ProductVersionFieldValue,
+} from "@/components/admin/AdminProductIdentityFields";
 import Typography from "@/components/ui/Typography";
 import { getToken } from "@/lib/auth";
 import {
@@ -19,7 +21,7 @@ import {
   type CreateProductRequest,
   type ProductOptionsResponse,
 } from "@/lib/api";
-import { generateSlug, type ShirtType } from "@/lib/utils";
+import { generateSlug } from "@/lib/utils";
 import FormField from "@/components/ui/FormField";
 import { validateRequiredProductFields } from "@/lib/product-form-validation";
 import { emptySizeStockRow, rowsToPayload, type SizeStockRow } from "@/lib/product-inventory";
@@ -47,7 +49,7 @@ function getInitialFormState() {
     price: "",
     sizeRows: [emptySizeStockRow()] as SizeStockRow[],
     imageFiles: [] as File[],
-    shirtType: "fan" as ShirtType,
+    shirtType: "" as ProductVersionFieldValue,
   };
 }
 
@@ -70,7 +72,7 @@ export default function AdminProductForm({ onSuccess, onCancel }: AdminProductFo
   const [price, setPrice] = useState("");
   const [sizeRows, setSizeRows] = useState<SizeStockRow[]>(() => [emptySizeStockRow()]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [shirtType, setShirtType] = useState<ShirtType>("fan");
+  const [shirtType, setShirtType] = useState<ProductVersionFieldValue>("");
   const [productOptions, setProductOptions] = useState<ProductOptionsResponse>({
     teams: [],
     leagues: [],
@@ -134,7 +136,7 @@ export default function AdminProductForm({ onSuccess, onCancel }: AdminProductFo
     kitType?: string;
     team?: string;
     season?: string;
-    shirtType?: ShirtType;
+    shirtType?: ProductVersionFieldValue;
   }) => {
     if (isNameManuallyEdited) return;
 
@@ -169,7 +171,7 @@ export default function AdminProductForm({ onSuccess, onCancel }: AdminProductFo
     syncNameFromFields({ season: value });
   };
 
-  const handleShirtTypeChange = (value: ShirtType) => {
+  const handleShirtTypeChange = (value: ProductVersionFieldValue) => {
     setShirtType(value);
     syncNameFromFields({ shirtType: value });
   };
@@ -191,7 +193,7 @@ export default function AdminProductForm({ onSuccess, onCancel }: AdminProductFo
       return;
     }
 
-    const requiredError = validateRequiredProductFields({ name, team, league, season });
+    const requiredError = validateRequiredProductFields({ name });
     if (requiredError) {
       setError(requiredError);
       setIsSubmitting(false);

@@ -26,6 +26,11 @@ export type SupplierOrderLineItemInput = {
   id?: string;
   product_id?: string;
   shirt_name?: string;
+  product_type?: string;
+  kit_type?: string;
+  team?: string;
+  league?: string;
+  season?: string;
   quantity?: number;
   type?: string;
   sizes?: string;
@@ -182,6 +187,11 @@ export function parseSupplierOrderLineItems(
       id: item.id?.trim() || generateULID(),
       product_id: trimOptional(item.product_id),
       shirt_name: shirtName,
+      product_type: trimOptional(item.product_type),
+      kit_type: trimOptional(item.kit_type),
+      team: trimOptional(item.team),
+      league: trimOptional(item.league),
+      season: trimOptional(item.season),
       quantity,
       type,
       sizes: normalizedSizes ?? "",

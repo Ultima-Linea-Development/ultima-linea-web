@@ -13,6 +13,7 @@ import { ADMIN_PAGE_PADDING_CLASS } from "@/components/admin/AdminTable";
 import AdminSearchInput from "@/components/admin/AdminSearchInput";
 import AdminSupplierOrderSearchSuggestion from "@/components/admin/AdminSupplierOrderSearchSuggestion";
 import ConfirmDeleteModal from "@/components/admin/ConfirmDeleteModal";
+import AdminTableBulkFooter from "@/components/admin/AdminTableBulkFooter";
 import { Button } from "@/components/ui/button";
 import { useAdminSupplierOrdersPanel } from "@/lib/hooks/use-admin-supplier-orders-panel";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,12 @@ export default function AdminSupplierOrdersPage() {
           duration={panel.undoDuration}
           onClose={panel.dismissDeleteToast}
           onUndo={panel.undoDelete}
+        />
+        <Alert
+          open={!!panel.bulkError}
+          message={panel.bulkError}
+          variant="destructive"
+          onClose={() => panel.setBulkError("")}
         />
       </div>
 
@@ -161,9 +168,73 @@ export default function AdminSupplierOrdersPage() {
         ]}
       />
 
+      <ConfirmDeleteModal
+        open={!!panel.exportConfirmOrder}
+        onClose={() => {
+          if (panel.isExportSubmitting) return;
+          panel.setExportConfirmOrder(null);
+          panel.setExportError("");
+        }}
+        title="Exportar a catálogo"
+        message="Se agregará el stock de los productos vinculados de este pedido al catálogo. Esta acción no se puede repetir para el mismo pedido."
+        error={panel.exportError}
+        actions={[
+          {
+            label: "Exportar",
+            variant: "default",
+            onClick: panel.handleExportToCatalog,
+            disabled: panel.isExportSubmitting,
+            loadingLabel: "...",
+          },
+          {
+            label: "Cancelar",
+            variant: "ghost",
+            onClick: () => {
+              panel.setExportConfirmOrder(null);
+              panel.setExportError("");
+            },
+            disabled: panel.isExportSubmitting,
+          },
+        ]}
+      />
+
+      <ConfirmDeleteModal
+        open={!!panel.bulkConfirmIds?.length}
+        onClose={() => {
+          panel.setBulkConfirmIds(null);
+          panel.setBulkError("");
+        }}
+        title="Eliminar pedidos"
+        message={
+          <>
+            Estás seguro que deseas eliminar {panel.bulkConfirmIds?.length ?? 0} pedido
+            {panel.bulkConfirmIds?.length === 1 ? "" : "s"}?
+          </>
+        }
+        error={panel.bulkError}
+        actions={[
+          {
+            label: "Eliminar",
+            variant: "delete",
+            onClick: panel.handleBulkDeleteConfirm,
+            disabled: panel.isBulkSubmitting,
+            loadingLabel: "...",
+          },
+          {
+            label: "Cancelar",
+            variant: "outline",
+            onClick: () => {
+              panel.setBulkConfirmIds(null);
+              panel.setBulkError("");
+            },
+            disabled: panel.isBulkSubmitting,
+          },
+        ]}
+      />
+
       <div className="w-full min-w-0">
         {panel.isDataLoading ? (
-          <AdminTableSkeleton variant="sales" />
+          <AdminTableSkeleton variant="sales" showSelection />
         ) : (
           <AdminSupplierOrdersTable
             orders={panel.orders}
@@ -177,11 +248,39 @@ export default function AdminSupplierOrdersPage() {
               panel.setEditError("");
               panel.setEditingOrder(order);
             }}
+            onExportToCatalog={(order) => {
+              panel.setExportError("");
+              panel.setExportConfirmOrder(order);
+            }}
             onDelete={(order) => {
               panel.setDeleteConfirmOrder(order);
               panel.setDeleteError("");
             }}
+            canExportToCatalog={panel.canExportOrderToCatalog}
             canDeleteOrder={panel.canDeleteOrder}
+            selectedIds={panel.selectedIds}
+            onSelectionChange={panel.setSelectedIds}
+            tableFooter={
+              <AdminTableBulkFooter
+                selectedCount={panel.selectedIds.length}
+                isSubmitting={panel.isBulkSubmitting}
+                onCancelSelection={panel.clearSelection}
+              >
+                <Button
+                  type="button"
+                  variant="delete"
+                  size="sm"
+                  onClick={() => {
+                    if (panel.selectedIds.length === 0) return;
+                    panel.setBulkConfirmIds([...panel.selectedIds]);
+                    panel.setBulkError("");
+                  }}
+                  disabled={panel.isBulkSubmitting}
+                >
+                  Eliminar
+                </Button>
+              </AdminTableBulkFooter>
+            }
           />
         )}
       </div>

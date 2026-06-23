@@ -13,7 +13,9 @@ import AdminCommissionSellerField from "@/components/admin/AdminCommissionSeller
 import AdminSaleDateField from "@/components/admin/AdminSaleDateField";
 import AdminSupplierOrderLineItemRow, {
   createEmptySupplierOrderLineItemDraft,
+  getSupplierOrderLineItemIdentityRequestFields,
   getSupplierOrderLineItemDraftTotal,
+  validateSupplierOrderLineItemIdentity,
   type SupplierOrderLineItemDraft,
 } from "@/components/admin/AdminSupplierOrderLineItemRow";
 import type {
@@ -21,10 +23,18 @@ import type {
   CommissionStatus,
   ExternalSeller,
   Product,
+  ProductOptionsResponse,
   SaleAssignableUser,
   UpdateCommissionRequest,
 } from "@/lib/api";
 import { productsApi } from "@/lib/api";
+import { EMPTY_PRODUCT_OPTIONS } from "@/lib/product-options";
+import {
+  buildProductName,
+  DEFAULT_PRODUCT_TYPE,
+  extractKitTypeFromName,
+  extractProductTypeFromName,
+} from "@/lib/product-name";
 import { COMMISSION_STATUS_OPTIONS } from "@/lib/commission-display";
 import {
   commissionSellerValueToPayload,
@@ -61,10 +71,33 @@ function commissionItemToDraft(
         (product) => product.name.toLocaleLowerCase() === item.shirt_name.toLocaleLowerCase()
       );
 
+  const productType = item.product_type ?? extractProductTypeFromName(item.shirt_name) ?? DEFAULT_PRODUCT_TYPE;
+  const kitType = item.kit_type ?? extractKitTypeFromName(item.shirt_name) ?? "";
+  const team = item.team ?? matchedProduct?.team ?? "";
+  const season = item.season ?? matchedProduct?.season ?? "";
+  const generatedName = buildProductName({
+    productType,
+    kitType,
+    team,
+    season,
+    type: item.type,
+  });
+
   return {
     key: item.id,
     productId: item.product_id ?? matchedProduct?.id,
     productName: item.shirt_name,
+    isNameManuallyEdited: item.shirt_name.trim() !== generatedName.trim(),
+    productType,
+    kitType,
+    team,
+    league: item.league ?? matchedProduct?.league ?? "",
+    season,
+    isCustomProductType: false,
+    isCustomKitType: false,
+    isCustomTeam: false,
+    isCustomLeague: false,
+    isCustomSeason: false,
     isCustomProduct: !item.product_id && !matchedProduct,
     type: item.type,
     sizeRows: sizeRowsFromLineItem(item),
@@ -86,6 +119,7 @@ function draftToRequestItem(item: SupplierOrderLineItemDraft) {
     id: item.key,
     product_id: item.productId,
     shirt_name: item.productName.trim(),
+    ...getSupplierOrderLineItemIdentityRequestFields(item),
     quantity: sizesPayload.quantity,
     type: item.type,
     sizes: sizesPayload.sizes,
@@ -106,6 +140,9 @@ function validateLineItems(lineItems: SupplierOrderLineItemDraft[]): string | nu
     if (!item.productName.trim()) {
       return "Cada producto necesita un nombre.";
     }
+
+    const identityError = validateSupplierOrderLineItemIdentity(item);
+    if (identityError) return identityError;
 
     const sizesPayload = sizeRowsToPayload(item.sizeRows);
     if (!sizesPayload) {
@@ -148,19 +185,21 @@ export default function AdminCommissionEditForm({
   const [lineItems, setLineItems] = useState<SupplierOrderLineItemDraft[]>(() =>
     commission.items.map((item) => commissionItemToDraft(item, products))
   );
-  const [sizeOptions, setSizeOptions] = useState<string[]>([]);
+  const [productOptions, setProductOptions] = useState<ProductOptionsResponse>(
+    EMPTY_PRODUCT_OPTIONS
+  );
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadSizeOptions = async () => {
+    const loadProductOptions = async () => {
       const response = await productsApi.getOptions();
       if (isMounted && response.data) {
-        setSizeOptions(response.data.sizes);
+        setProductOptions(response.data);
       }
     };
 
-    void loadSizeOptions();
+    void loadProductOptions();
 
     return () => {
       isMounted = false;
@@ -325,7 +364,7 @@ export default function AdminCommissionEditForm({
               key={item.key}
               item={item}
               products={products}
-              sizeOptions={sizeOptions}
+              productOptions={productOptions}
               isSubmitting={isSubmitting || isReadOnly}
               onChange={updateLineItem}
               onRemove={removeLineItem}

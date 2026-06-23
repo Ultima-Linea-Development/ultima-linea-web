@@ -71,6 +71,11 @@ export type SupplierOrderLineItem = {
   id: string;
   product_id?: string;
   shirt_name: string;
+  product_type?: string;
+  kit_type?: string;
+  team?: string;
+  league?: string;
+  season?: string;
   quantity: number;
   type: SupplierOrderItemType;
   sizes: string;
@@ -112,6 +117,7 @@ export type SupplierOrder = {
   received_at?: Date;
   items: SupplierOrderLineItem[];
   created_by?: string;
+  catalog_exported_at?: Date;
   created_at: Date;
   updated_at: Date;
 };
@@ -159,6 +165,26 @@ export type Sale = {
   size?: string;
   quantity?: number;
   unit_price?: number;
+};
+
+export type AdminHistoryAction = "create" | "update" | "delete" | "restore";
+
+export type AdminHistoryResource =
+  | "product"
+  | "sale"
+  | "supplier_order"
+  | "commission";
+
+export type AdminHistoryEntry = {
+  id: string;
+  action: AdminHistoryAction;
+  resource: AdminHistoryResource;
+  resource_id: string;
+  resource_label: string;
+  actor_id: string;
+  actor_email?: string;
+  actor_role?: string;
+  created_at: Date;
 };
 
 export function generateSlug(text: string): string {
@@ -216,7 +242,7 @@ export function extractTypeFromName(name: string): string {
   if (lower.includes("retro")) return "RETRO";
   if (lower.includes("player")) return "PLAYER";
   if (lower.includes("fan")) return "FAN";
-  return "FAN";
+  return "";
 }
 
 type ProductNameNormalizationControls = {
@@ -293,10 +319,6 @@ export function normalizeProductUpdates(
     type: updates.type ?? current.type,
   };
 
-  if (!merged.team?.trim() || !merged.season?.trim()) {
-    return {};
-  }
-
   if (updates.preserve_name) {
     const name = merged.name.trim();
     const season = normalizeSeason(merged.season);
@@ -322,12 +344,16 @@ export function normalizeProductUpdates(
 }
 
 export type UserDocument = Omit<User, "id"> & { _id: string };
-export type ProductDocument = Omit<Product, "id"> & { _id: string };
+export type ProductDocument = Omit<Product, "id"> & {
+  _id: string;
+  deleted_restore_is_active?: boolean;
+};
 export type SaleDocument = Omit<Sale, "id"> & { _id: string };
 export type ExternalSellerDocument = Omit<ExternalSeller, "id"> & { _id: string };
 export type SupplierDocument = Omit<Supplier, "id"> & { _id: string };
 export type SupplierOrderDocument = Omit<SupplierOrder, "id"> & { _id: string };
 export type CommissionDocument = Omit<Commission, "id"> & { _id: string };
+export type AdminHistoryEntryDocument = Omit<AdminHistoryEntry, "id"> & { _id: string };
 
 export function userFromDoc(doc: UserDocument): User {
   const { _id, password, ...rest } = doc;
@@ -336,7 +362,9 @@ export function userFromDoc(doc: UserDocument): User {
 
 export function productFromDoc(doc: ProductDocument): Product {
   const { _id, ...rest } = doc;
-  return { id: _id, ...rest };
+  const product = { ...rest };
+  delete product.deleted_restore_is_active;
+  return { id: _id, ...product };
 }
 
 export function saleFromDoc(doc: SaleDocument): Sale {
@@ -396,5 +424,19 @@ export function commissionFromDoc(doc: CommissionDocument): Commission {
 
 export function commissionToDoc(commission: Commission): CommissionDocument {
   const { id, ...rest } = commission;
+  return { _id: id, ...rest };
+}
+
+export function adminHistoryEntryFromDoc(
+  doc: AdminHistoryEntryDocument
+): AdminHistoryEntry {
+  const { _id, ...rest } = doc;
+  return { id: _id, ...rest };
+}
+
+export function adminHistoryEntryToDoc(
+  entry: AdminHistoryEntry
+): AdminHistoryEntryDocument {
+  const { id, ...rest } = entry;
   return { _id: id, ...rest };
 }

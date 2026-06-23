@@ -19,6 +19,7 @@ import {
   toProductResponse,
 } from "@/lib/server/products";
 import { buildAdminCatalogMongoFilter } from "@/lib/admin-catalog-filters";
+import { trackAdminAction } from "@/lib/server/admin-history";
 
 export async function GET(request: NextRequest) {
   const auth = requireStaff(requireAuth(request));
@@ -85,6 +86,14 @@ export async function POST(request: NextRequest) {
     product.created_by = auth.user_id;
 
     await collection.insertOne(productToDoc(product));
+    await trackAdminAction({
+      auth,
+      action: "create",
+      resource: "product",
+      resourceId: product.id,
+      resourceLabel: product.name,
+    });
+
     return NextResponse.json(product, { status: 201 });
   } catch {
     return jsonError("Failed to create product", 500);

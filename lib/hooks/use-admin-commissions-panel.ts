@@ -20,6 +20,7 @@ import {
 import { filterCommissionsByQuery } from "@/lib/admin-commissions-search";
 import { getCommissionLabel } from "@/lib/commission-display";
 import { useAdminSearch } from "@/lib/hooks/use-admin-search";
+import { useAdminTableSelection } from "@/lib/hooks/use-admin-table-selection";
 import { usePendingDelete } from "@/lib/use-pending-delete";
 
 type CommissionsListData = {
@@ -52,6 +53,18 @@ export function useAdminCommissionsPanel() {
   const [deleteConfirmCommission, setDeleteConfirmCommission] = useState<Commission | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
+
+  const {
+    selectedIds,
+    setSelectedIds,
+    bulkConfirmIds,
+    setBulkConfirmIds,
+    bulkError,
+    setBulkError,
+    isBulkSubmitting,
+    setIsBulkSubmitting,
+    clearSelection,
+  } = useAdminTableSelection();
 
   const {
     deleteToast,
@@ -338,6 +351,72 @@ export function useAdminCommissionsPanel() {
     []
   );
 
+  const handleBulkDeleteConfirm = useCallback(async () => {
+    if (!bulkConfirmIds?.length) return;
+
+    const ids = bulkConfirmIds;
+    const count = ids.length;
+    const snapshot = commissionsData;
+    const idSet = new Set(ids);
+
+    setBulkConfirmIds(null);
+    clearSelection();
+    setIsBulkSubmitting(false);
+    setBulkError("");
+    setError("");
+
+    setCommissionsData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        commissions: prev.commissions.filter((item) => !idSet.has(item.id)),
+        total: Math.max(0, prev.total - count),
+      };
+    });
+
+    await scheduleDelete({
+      message:
+        count === 1
+          ? "Encargo eliminado correctamente."
+          : `${count} encargos eliminados correctamente.`,
+      restore: () => setCommissionsData(snapshot),
+      commit: async () => {
+        const token = getToken();
+        if (!token) {
+          setCommissionsData(snapshot);
+          setBulkError("Sesión expirada.");
+          return;
+        }
+
+        let failed = 0;
+        for (const id of ids) {
+          const response = await adminCommissionsApi.delete(id, token);
+          if (response.error) failed += 1;
+        }
+
+        if (failed > 0) {
+          setCommissionsData(snapshot);
+          setBulkError(`${failed} de ${count} no se pudieron eliminar.`);
+          invalidateSearchCache();
+          await refreshCommissionsPanel();
+          return;
+        }
+
+        invalidateSearchCache();
+        await refreshCommissionsPanel();
+      },
+    });
+  }, [
+    bulkConfirmIds,
+    commissionsData,
+    scheduleDelete,
+    refreshCommissionsPanel,
+    invalidateSearchCache,
+    clearSelection,
+    setIsBulkSubmitting,
+    setBulkError,
+  ]);
+
   const data = commissionsData ?? undefined;
   const commissions = data?.commissions ?? [];
   const total = data?.total ?? 0;
@@ -393,7 +472,16 @@ export function useAdminCommissionsPanel() {
     handleSaveEdit,
     handleExportCommission,
     handleConfirmDelete,
+    handleBulkDeleteConfirm,
     canDeleteCommission,
+    selectedIds,
+    setSelectedIds,
+    bulkConfirmIds,
+    setBulkConfirmIds,
+    bulkError,
+    setBulkError,
+    isBulkSubmitting,
+    clearSelection,
     getCommissionLabel,
     isAdmin: isAdmin(),
     getCurrentUserId,

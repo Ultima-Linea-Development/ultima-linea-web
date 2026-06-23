@@ -1,10 +1,16 @@
 "use client";
 
+import { useMemo, type ReactNode } from "react";
 import Box from "@/components/layout/Box";
 import Typography from "@/components/ui/Typography";
 import AdminTableMobileActionsMenu, {
   type AdminTableMobileAction,
 } from "@/components/admin/AdminTableMobileActionsMenu";
+import {
+  AdminTableSelectAllHeader,
+  AdminTableSelectAllMobileRow,
+  AdminTableRowCheckbox,
+} from "@/components/admin/AdminTableSelectionControls";
 import {
   AdminTable,
   AdminTableEmptyRow,
@@ -23,15 +29,21 @@ import AdminTextLink from "@/components/admin/AdminTextLink";
 import AdminSupplierOrderStatusBadge from "@/components/admin/AdminSupplierOrderStatusBadge";
 import AdminSupplierOrderTrackingCell from "@/components/admin/AdminSupplierOrderTrackingCell";
 import type { SupplierOrder } from "@/lib/api";
+import { useAdminTableRowSelection } from "@/lib/hooks/use-admin-table-selection";
 import { getSupplierOrderTotal } from "@/lib/supplier-order-costs";
 import { formatSaleDateDisplay } from "@/lib/sale-date";
 import { formatPrice } from "@/lib/utils";
 
 const PER_PAGE = 10;
 
-function renderOrderTableHeader(hasActions: boolean) {
+function renderOrderTableHeader(hasActions: boolean, showSelection: boolean) {
   return (
     <tr>
+      {showSelection ? (
+        <th className={ADMIN_TABLE_TH_CLASS}>
+          <span className="sr-only">Seleccionar</span>
+        </th>
+      ) : null}
       <th className={ADMIN_TABLE_TH_CLASS}>
         <Typography variant="body2">Fecha</Typography>
       </th>
@@ -53,11 +65,11 @@ function renderOrderTableHeader(hasActions: boolean) {
       <th className={ADMIN_TABLE_TH_CLASS}>
         <Typography variant="body2">Total</Typography>
       </th>
-      {hasActions && (
+      {hasActions ? (
         <th className={ADMIN_TABLE_TH_CLASS}>
           <Typography variant="body2">Acciones</Typography>
         </th>
-      )}
+      ) : null}
     </tr>
   );
 }
@@ -71,8 +83,13 @@ type AdminSupplierOrdersTableProps = {
   onPageChange: (page: number) => void;
   onViewDetails?: (order: SupplierOrder) => void;
   onEdit?: (order: SupplierOrder) => void;
+  onExportToCatalog?: (order: SupplierOrder) => void;
   onDelete?: (order: SupplierOrder) => void;
+  canExportToCatalog?: (order: SupplierOrder) => boolean;
   canDeleteOrder?: (order: SupplierOrder) => boolean;
+  selectedIds?: string[];
+  onSelectionChange?: (ids: string[]) => void;
+  tableFooter?: ReactNode;
 };
 
 function getOrderItemsLabel(order: SupplierOrder): string {
@@ -90,11 +107,38 @@ export default function AdminSupplierOrdersTable({
   onPageChange,
   onViewDetails,
   onEdit,
+  onExportToCatalog,
   onDelete,
+  canExportToCatalog,
   canDeleteOrder,
+  selectedIds = [],
+  onSelectionChange,
+  tableFooter,
 }: AdminSupplierOrdersTableProps) {
   const cellClass = ADMIN_TABLE_CELL_CLASS;
-  const hasActions = Boolean(onViewDetails || onEdit || onDelete);
+  const hasActions = Boolean(onViewDetails || onEdit || onExportToCatalog || onDelete);
+  const visibleIds = orders.map((order) => order.id);
+  const selectableVisibleIds = useMemo(
+    () =>
+      orders
+        .filter((order) => !canDeleteOrder || canDeleteOrder(order))
+        .map((order) => order.id),
+    [orders, canDeleteOrder]
+  );
+  const {
+    selectAllRef,
+    allVisibleSelected,
+    handleToggleRow,
+    handleToggleAll,
+    isRowSelected,
+  } = useAdminTableRowSelection({
+    visibleIds,
+    selectedIds,
+    onSelectionChange,
+    selectableVisibleIds,
+  });
+  const colSpan = (onSelectionChange ? 1 : 0) + (hasActions ? 8 : 7);
+  const isRowSelectable = (order: SupplierOrder) => !canDeleteOrder || canDeleteOrder(order);
 
   const getRowActions = (order: SupplierOrder): AdminTableMobileAction[] => {
     const actions: AdminTableMobileAction[] = [];
@@ -117,7 +161,16 @@ export default function AdminSupplierOrdersTable({
       });
     }
 
-    if (onDelete && (!canDeleteOrder || canDeleteOrder(order))) {
+    if (onExportToCatalog && (!canExportToCatalog || canExportToCatalog(order))) {
+      actions.push({
+        id: "export-catalog",
+        label: "Exportar a catálogo",
+        icon: "catalog",
+        onClick: () => onExportToCatalog(order),
+      });
+    }
+
+    if (onDelete && isRowSelectable(order)) {
       actions.push({
         id: "delete",
         label: "Eliminar",
@@ -130,6 +183,44 @@ export default function AdminSupplierOrdersTable({
     return actions;
   };
 
+  const renderDesktopHeader = () => (
+    <tr>
+      {onSelectionChange ? (
+        <AdminTableSelectAllHeader
+          selectAllRef={selectAllRef}
+          checked={allVisibleSelected}
+          onChange={handleToggleAll}
+        />
+      ) : null}
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Fecha</Typography>
+      </th>
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Pedido</Typography>
+      </th>
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Proveedor</Typography>
+      </th>
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Estado</Typography>
+      </th>
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Nro. Seguimiento</Typography>
+      </th>
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Ítems</Typography>
+      </th>
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Total</Typography>
+      </th>
+      {hasActions ? (
+        <th className={ADMIN_TABLE_TH_CLASS}>
+          <Typography variant="body2">Acciones</Typography>
+        </th>
+      ) : null}
+    </tr>
+  );
+
   return (
     <Box display="flex" direction="col" gap="4" className="w-full min-w-0">
       {orders.length === 0 ? (
@@ -137,35 +228,55 @@ export default function AdminSupplierOrdersTable({
           <AdminTableMobileEmpty message="No hay pedidos" />
           <AdminTable>
             <thead className="bg-muted/50">
-              {renderOrderTableHeader(hasActions)}
+              {renderOrderTableHeader(hasActions, Boolean(onSelectionChange))}
             </thead>
             <tbody>
-              <AdminTableEmptyRow colSpan={hasActions ? 8 : 7} message="No hay pedidos" />
+              <AdminTableEmptyRow colSpan={colSpan} message="No hay pedidos" />
             </tbody>
           </AdminTable>
         </>
       ) : (
         <>
           <AdminTableMobileList>
+            {onSelectionChange && selectableVisibleIds.length > 0 ? (
+              <AdminTableSelectAllMobileRow
+                checked={allVisibleSelected}
+                onChange={handleToggleAll}
+              />
+            ) : null}
             {orders.map((order, index) => (
-              <AdminTableMobileCard key={order.id} stripeIndex={index}>
+              <AdminTableMobileCard
+                key={order.id}
+                selected={isRowSelected(order.id)}
+                stripeIndex={index}
+              >
                 <Box display="flex" justify="between" align="start" gap="2" className="w-full min-w-0">
-                  {onViewDetails ? (
-                    <AdminTextLink
-                      tone="default"
-                      onClick={() => onViewDetails(order)}
-                      className="block min-w-0 text-left"
-                    >
+                  <Box display="flex" align="start" gap="2" className="min-w-0">
+                    {onSelectionChange && isRowSelectable(order) ? (
+                      <AdminTableRowCheckbox
+                        checked={isRowSelected(order.id)}
+                        onChange={() => handleToggleRow(order.id)}
+                        label={`Seleccionar ${order.name}`}
+                        className="mt-0.5"
+                      />
+                    ) : null}
+                    {onViewDetails ? (
+                      <AdminTextLink
+                        tone="default"
+                        onClick={() => onViewDetails(order)}
+                        className="block min-w-0 text-left"
+                      >
+                        <Typography variant="body2" className="line-clamp-2">
+                          {order.name}
+                        </Typography>
+                      </AdminTextLink>
+                    ) : (
                       <Typography variant="body2" className="line-clamp-2">
                         {order.name}
                       </Typography>
-                    </AdminTextLink>
-                  ) : (
-                    <Typography variant="body2" className="line-clamp-2">
-                      {order.name}
-                    </Typography>
-                  )}
-                  {hasActions && <AdminTableMobileActionsMenu actions={getRowActions(order)} />}
+                    )}
+                  </Box>
+                  {hasActions ? <AdminTableMobileActionsMenu actions={getRowActions(order)} /> : null}
                 </Box>
                 <AdminTableMobileSummary
                   left={
@@ -190,12 +301,27 @@ export default function AdminSupplierOrdersTable({
           </AdminTableMobileList>
 
           <AdminTable>
-            <thead className="bg-muted/50">
-              {renderOrderTableHeader(hasActions)}
-            </thead>
+            <thead className="bg-muted/50">{renderDesktopHeader()}</thead>
             <tbody>
               {orders.map((order, index) => (
-                <tr key={order.id} className={adminTableRowClassName({ stripeIndex: index })}>
+                <tr
+                  key={order.id}
+                  className={adminTableRowClassName({
+                    stripeIndex: index,
+                    selected: isRowSelected(order.id),
+                  })}
+                >
+                  {onSelectionChange ? (
+                    <td className={cellClass}>
+                      {isRowSelectable(order) ? (
+                        <AdminTableRowCheckbox
+                          checked={isRowSelected(order.id)}
+                          onChange={() => handleToggleRow(order.id)}
+                          label={`Seleccionar ${order.name}`}
+                        />
+                      ) : null}
+                    </td>
+                  ) : null}
                   <td className={cellClass}>
                     <Typography variant="body2" className="whitespace-nowrap">
                       {formatSaleDateDisplay(order.created_at)}
@@ -233,17 +359,19 @@ export default function AdminSupplierOrdersTable({
                       {formatPrice(getSupplierOrderTotal(order))}
                     </Typography>
                   </td>
-                  {hasActions && (
+                  {hasActions ? (
                     <td className={ADMIN_TABLE_ACTIONS_CELL_CLASS}>
                       <AdminTableMobileActionsMenu actions={getRowActions(order)} />
                     </td>
-                  )}
+                  ) : null}
                 </tr>
               ))}
             </tbody>
           </AdminTable>
         </>
       )}
+
+      {tableFooter}
 
       <AdminTablePagination
         page={page}

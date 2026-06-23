@@ -12,10 +12,12 @@ import { InlineAlert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/button";
 import ImageUploadDropzone from "@/components/ui/ImageUploadDropzone";
 import SortableImageGrid, { type SortableImageItem } from "@/components/ui/SortableImageGrid";
-import AdminProductIdentityFields from "@/components/admin/AdminProductIdentityFields";
+import AdminProductIdentityFields, {
+  type ProductVersionFieldValue,
+} from "@/components/admin/AdminProductIdentityFields";
 import type { Product, ProductOptionsResponse, UpdateProductRequest } from "@/lib/api";
 import { adminUploadApi, productsApi } from "@/lib/api";
-import { generateSlug, normalizeShirtType, type ShirtType } from "@/lib/utils";
+import { generateSlug, normalizeShirtType } from "@/lib/utils";
 import { validateRequiredProductFields } from "@/lib/product-form-validation";
 import {
   productToRows,
@@ -62,7 +64,7 @@ export default function AdminProductEditForm({
   error = "",
   getToken,
 }: AdminProductEditFormProps) {
-  const initialShirtType = normalizeShirtType(product.type) ?? "fan";
+  const initialShirtType = normalizeShirtType(product.type) ?? "";
   const initialProductType = extractProductTypeFromName(product.name) ?? DEFAULT_PRODUCT_TYPE;
   const initialKitType = extractKitTypeFromName(product.name) ?? "";
   const [name, setName] = useState(product.name);
@@ -92,7 +94,7 @@ export default function AdminProductEditForm({
   const [sizeRows, setSizeRows] = useState<SizeStockRow[]>(() => productToRows(product));
   const [inventoryError, setInventoryError] = useState("");
   const [fieldError, setFieldError] = useState("");
-  const [shirtType, setShirtType] = useState<ShirtType>(initialShirtType);
+  const [shirtType, setShirtType] = useState<ProductVersionFieldValue>(initialShirtType);
   const [isActive, setIsActive] = useState(product.is_active);
   const [currentImageUrls, setCurrentImageUrls] = useState<string[]>(product.image_urls ?? []);
   const [newFiles, setNewFiles] = useState<File[]>([]);
@@ -132,7 +134,7 @@ export default function AdminProductEditForm({
     const teamValue = product.team ?? "";
     const leagueValue = product.league ?? "";
     const seasonValue = product.season ?? "";
-    const shirtTypeValue = normalizeShirtType(product.type) ?? "fan";
+    const shirtTypeValue = normalizeShirtType(product.type) ?? "";
     const productTypeValue = extractProductTypeFromName(product.name) ?? DEFAULT_PRODUCT_TYPE;
     const kitTypeValue = extractKitTypeFromName(product.name) ?? "";
     const resolvedTeam = resolveOptionValue(teamValue, productOptions.teams);
@@ -197,7 +199,7 @@ export default function AdminProductEditForm({
     kitType?: string;
     team?: string;
     season?: string;
-    shirtType?: ShirtType;
+    shirtType?: ProductVersionFieldValue;
   }) => {
     if (isNameManuallyEdited) return;
 
@@ -232,7 +234,7 @@ export default function AdminProductEditForm({
     syncNameFromFields({ season: value });
   };
 
-  const handleShirtTypeChange = (value: ShirtType) => {
+  const handleShirtTypeChange = (value: ProductVersionFieldValue) => {
     setShirtType(value);
     syncNameFromFields({ shirtType: value });
   };
@@ -248,7 +250,7 @@ export default function AdminProductEditForm({
     setInventoryError("");
     setFieldError("");
 
-    const requiredError = validateRequiredProductFields({ name, team, league, season });
+    const requiredError = validateRequiredProductFields({ name });
     if (requiredError) {
       setFieldError(requiredError);
       return;

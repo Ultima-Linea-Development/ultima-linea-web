@@ -15,6 +15,7 @@ import AdminProductSearchSuggestion from "@/components/admin/AdminProductSearchS
 import AdminProductEditForm from "@/components/admin/AdminProductEditForm";
 import AdminProductForm from "@/components/admin/AdminProductForm";
 import ConfirmDeleteModal from "@/components/admin/ConfirmDeleteModal";
+import AdminTableBulkFooter from "@/components/admin/AdminTableBulkFooter";
 import Modal from "@/components/ui/Modal";
 import { useAdminRole } from "@/components/admin/AdminRoleProvider";
 import { getToken } from "@/lib/auth";
@@ -245,53 +246,37 @@ export default function AdminProductsPage() {
           sizeOptions={catalog.sizeOptions}
           onSizeFilterChange={catalog.handleSizeFilterChange}
           tableFooter={
-            catalog.selectedIds.length > 0 ? (
-              <Box
-                display="flex"
-                className="items-center justify-between gap-4 flex-wrap border border-border bg-muted/30 p-3"
+            <AdminTableBulkFooter
+              selectedCount={catalog.selectedIds.length}
+              isSubmitting={catalog.isBulkSubmitting}
+              onCancelSelection={() => {
+                catalog.setSelectedIds([]);
+                catalog.setBulkError("");
+              }}
+            >
+              <Button
+                type="button"
+                variant="warning"
+                size="sm"
+                onClick={catalog.handleBulkDesactivar}
+                disabled={catalog.isBulkSubmitting}
               >
-                <Typography variant="body2">
-                  {catalog.selectedIds.length} seleccionado
-                  {catalog.selectedIds.length === 1 ? "" : "s"}
-                </Typography>
-                <Box display="flex" gap="2" className="flex-wrap">
-                  <Button
-                    type="button"
-                    variant="warning"
-                    size="sm"
-                    onClick={catalog.handleBulkDesactivar}
-                    disabled={catalog.isBulkSubmitting}
-                  >
-                    {catalog.isBulkSubmitting ? "..." : "Desactivar"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="delete"
-                    size="sm"
-                    onClick={() => {
-                      if (catalog.selectedIds.length === 0) return;
-                      catalog.setBulkConfirmIds([...catalog.selectedIds]);
-                      catalog.setBulkError("");
-                    }}
-                    disabled={catalog.isBulkSubmitting}
-                  >
-                    Eliminar
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      catalog.setSelectedIds([]);
-                      catalog.setBulkError("");
-                    }}
-                    disabled={catalog.isBulkSubmitting}
-                  >
-                    Cancelar selección
-                  </Button>
-                </Box>
-              </Box>
-            ) : null
+                {catalog.isBulkSubmitting ? "..." : "Desactivar"}
+              </Button>
+              <Button
+                type="button"
+                variant="delete"
+                size="sm"
+                onClick={() => {
+                  if (catalog.selectedIds.length === 0) return;
+                  catalog.setBulkConfirmIds([...catalog.selectedIds]);
+                  catalog.setBulkError("");
+                }}
+                disabled={catalog.isBulkSubmitting}
+              >
+                Eliminar
+              </Button>
+            </AdminTableBulkFooter>
           }
         />
         )}

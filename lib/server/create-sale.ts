@@ -6,6 +6,7 @@ import {
   productFromDoc,
 } from "@/lib/server/models";
 import { productHasSizeStock } from "@/lib/server/sales";
+import { nonDeletedProductFilter } from "@/lib/server/products";
 
 export type CreateSaleItemInput = {
   product_id: string;
@@ -39,7 +40,7 @@ export async function processSaleItem(
     return { error: "Cantidad inválida", status: 400 };
   }
 
-  const productDoc = await products.findOne({ _id: productId });
+  const productDoc = await products.findOne({ _id: productId, ...nonDeletedProductFilter });
   if (!productDoc) return { error: "Producto no encontrado", status: 404 };
 
   const product = productFromDoc(productDoc);

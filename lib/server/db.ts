@@ -7,6 +7,7 @@ const EXTERNAL_SELLERS_COLLECTION = "external_sellers";
 const SUPPLIERS_COLLECTION = "suppliers";
 const SUPPLIER_ORDERS_COLLECTION = "supplier_orders";
 const COMMISSIONS_COLLECTION = "commissions";
+const ADMIN_HISTORY_COLLECTION = "admin_history";
 
 declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
@@ -106,6 +107,10 @@ export async function getCommissionsCollection<T extends Document = Document>() 
   return getCollection<T>(COMMISSIONS_COLLECTION);
 }
 
+export async function getAdminHistoryCollection<T extends Document = Document>() {
+  return getCollection<T>(ADMIN_HISTORY_COLLECTION);
+}
+
 let indexesCreated = false;
 
 export async function ensureIndexes(): Promise<void> {
@@ -120,6 +125,7 @@ export async function ensureIndexes(): Promise<void> {
     { key: { team: 1 } },
     { key: { league: 1 } },
     { key: { is_active: 1 } },
+    { key: { deleted_at: 1 } },
     { key: { slug: 1 } },
     { key: { sku: 1 }, unique: true, sparse: true },
     { key: { type: 1 } },
@@ -157,6 +163,13 @@ export async function ensureIndexes(): Promise<void> {
     { key: { supplier_order_id: 1 } },
   ]);
 
+  const adminHistory = db.collection(ADMIN_HISTORY_COLLECTION);
+  await adminHistory.createIndexes([
+    { key: { created_at: -1 } },
+    { key: { resource: 1, resource_id: 1 } },
+    { key: { actor_id: 1 } },
+  ]);
+
   indexesCreated = true;
 }
 
@@ -168,4 +181,5 @@ export {
   SUPPLIERS_COLLECTION,
   SUPPLIER_ORDERS_COLLECTION,
   COMMISSIONS_COLLECTION,
+  ADMIN_HISTORY_COLLECTION,
 };

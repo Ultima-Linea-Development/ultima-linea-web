@@ -28,6 +28,7 @@ import {
 import { parseSaleDateInput } from "@/lib/sale-date";
 import { CreateSaleItemInput, processSaleItem } from "@/lib/server/create-sale";
 import { normalizeSaleForResponse } from "@/lib/server/sale-items";
+import { trackAdminAction } from "@/lib/server/admin-history";
 
 type CreateSaleItemBody = {
   product_id?: string;
@@ -201,6 +202,13 @@ export async function POST(request: NextRequest) {
 
     const sales = await getSalesCollection<SaleDocument>();
     await sales.insertOne(saleToDoc(sale));
+    await trackAdminAction({
+      auth,
+      action: "create",
+      resource: "sale",
+      resourceId: sale.id,
+      resourceLabel: `Venta ${sale.id}`,
+    });
 
     return NextResponse.json(
       {

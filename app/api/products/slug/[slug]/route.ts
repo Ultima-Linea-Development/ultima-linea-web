@@ -19,7 +19,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { slugPart, ulid } = extractULIDFromSlug(slugParam);
 
     if (ulid) {
-      const doc = await collection.findOne({ _id: ulid, is_active: true });
+      const doc = await collection.findOne({
+        _id: ulid,
+        is_active: true,
+        deleted_at: { $exists: false },
+      });
       if (!doc) {
         return jsonError("Product not found", 404);
       }
@@ -37,7 +41,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json(toProductResponse(product, product.image_urls.length));
     }
 
-    const doc = await collection.findOne({ slug: slugParam, is_active: true });
+    const doc = await collection.findOne({
+      slug: slugParam,
+      is_active: true,
+      deleted_at: { $exists: false },
+    });
     if (!doc) {
       return jsonError("Product not found", 404);
     }

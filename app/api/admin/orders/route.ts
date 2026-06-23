@@ -30,6 +30,7 @@ import {
   normalizeSupplierOrderTrackingLink,
   validateSupplierOrderTrackingLink,
 } from "@/lib/supplier-order-display";
+import { trackAdminAction } from "@/lib/server/admin-history";
 
 import { parseSaleDateInput } from "@/lib/sale-date";
 
@@ -181,6 +182,13 @@ export async function POST(request: NextRequest) {
 
     const collection = await getSupplierOrdersCollection<SupplierOrderDocument>();
     await collection.insertOne(supplierOrderToDoc(order));
+    await trackAdminAction({
+      auth,
+      action: "create",
+      resource: "supplier_order",
+      resourceId: order.id,
+      resourceLabel: order.name,
+    });
 
     return NextResponse.json(
       { order: normalizeSupplierOrderForResponse(order) },

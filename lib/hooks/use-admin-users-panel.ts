@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { filterUsersByQuery } from "@/lib/admin-users-search";
 import { useAdminSearch } from "@/lib/hooks/use-admin-search";
+import { useAdminTableSelection } from "@/lib/hooks/use-admin-table-selection";
 import { usePendingDelete } from "@/lib/use-pending-delete";
 
 type UsersListData = {
@@ -37,6 +38,18 @@ export function useAdminUsersPanel() {
   const [isRequestingPasswordChange, setIsRequestingPasswordChange] = useState(false);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<AdminUser | null>(null);
   const [deleteError, setDeleteError] = useState("");
+
+  const {
+    selectedIds,
+    setSelectedIds,
+    bulkConfirmIds,
+    setBulkConfirmIds,
+    bulkError,
+    setBulkError,
+    isBulkSubmitting,
+    setIsBulkSubmitting,
+    clearSelection,
+  } = useAdminTableSelection();
 
   const {
     deleteToast,
@@ -250,6 +263,76 @@ export function useAdminUsersPanel() {
     });
   }, [deleteConfirmUser, usersData, scheduleDelete, loadUsers]);
 
+  const canSelectUser = useCallback((user: AdminUser) => !user.is_primary_admin, []);
+
+  const handleBulkDeleteConfirm = useCallback(async () => {
+    if (!bulkConfirmIds?.length) return;
+
+    const ids = bulkConfirmIds.filter((id) => {
+      const user = usersData?.users.find((item) => item.id === id);
+      return user && !user.is_primary_admin;
+    });
+    if (ids.length === 0) return;
+
+    const count = ids.length;
+    const usersSnapshot = usersData;
+    const idSet = new Set(ids);
+
+    setBulkConfirmIds(null);
+    clearSelection();
+    setIsBulkSubmitting(false);
+    setBulkError("");
+    setError("");
+
+    setUsersData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        users: prev.users.filter((item) => !idSet.has(item.id)),
+        total: Math.max(0, prev.total - count),
+      };
+    });
+
+    await scheduleDelete({
+      message:
+        count === 1
+          ? "Usuario eliminado correctamente."
+          : `${count} usuarios eliminados correctamente.`,
+      restore: () => setUsersData(usersSnapshot),
+      commit: async () => {
+        const token = getToken();
+        if (!token) {
+          setUsersData(usersSnapshot);
+          setBulkError("Sesión expirada.");
+          return;
+        }
+
+        let failed = 0;
+        for (const id of ids) {
+          const response = await adminUsersApi.delete(id, token);
+          if (response.error) failed += 1;
+        }
+
+        if (failed > 0) {
+          setUsersData(usersSnapshot);
+          setBulkError(`${failed} de ${count} no se pudieron eliminar.`);
+          await loadUsers();
+          return;
+        }
+
+        await loadUsers();
+      },
+    });
+  }, [
+    bulkConfirmIds,
+    usersData,
+    scheduleDelete,
+    loadUsers,
+    clearSelection,
+    setIsBulkSubmitting,
+    setBulkError,
+  ]);
+
   const data = usersData ?? undefined;
   const users = data?.users ?? [];
   const total = data?.total ?? 0;
@@ -298,5 +381,15 @@ export function useAdminUsersPanel() {
     handleSaveEdit,
     handleRequestPasswordChange,
     handleConfirmDelete,
+    handleBulkDeleteConfirm,
+    canSelectUser,
+    selectedIds,
+    setSelectedIds,
+    bulkConfirmIds,
+    setBulkConfirmIds,
+    bulkError,
+    setBulkError,
+    isBulkSubmitting,
+    clearSelection,
   };
 }

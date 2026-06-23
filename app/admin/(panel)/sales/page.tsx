@@ -13,6 +13,7 @@ import { ADMIN_PAGE_PADDING_CLASS } from "@/components/admin/AdminTable";
 import AdminSearchInput from "@/components/admin/AdminSearchInput";
 import AdminSaleSearchSuggestion from "@/components/admin/AdminSaleSearchSuggestion";
 import ConfirmDeleteModal from "@/components/admin/ConfirmDeleteModal";
+import AdminTableBulkFooter from "@/components/admin/AdminTableBulkFooter";
 import { getSalePrimaryProductName } from "@/lib/sale-items";
 import { Button } from "@/components/ui/button";
 import { useAdminSalesPanel } from "@/lib/hooks/use-admin-sales-panel";
@@ -56,6 +57,12 @@ export default function AdminSalesPage() {
         duration={panel.undoDuration}
         onClose={panel.dismissDeleteToast}
         onUndo={panel.undoDelete}
+      />
+      <Alert
+        open={!!panel.bulkError}
+        message={panel.bulkError}
+        variant="destructive"
+        onClose={() => panel.setBulkError("")}
       />
       </div>
 
@@ -160,9 +167,43 @@ export default function AdminSalesPage() {
         ]}
       />
 
+      <ConfirmDeleteModal
+        open={!!panel.bulkConfirmIds?.length}
+        onClose={() => {
+          panel.setBulkConfirmIds(null);
+          panel.setBulkError("");
+        }}
+        title="Eliminar ventas"
+        message={
+          <>
+            Estás seguro que deseas eliminar {panel.bulkConfirmIds?.length ?? 0} venta
+            {panel.bulkConfirmIds?.length === 1 ? "" : "s"}?
+          </>
+        }
+        error={panel.bulkError}
+        actions={[
+          {
+            label: "Eliminar",
+            variant: "delete",
+            onClick: panel.handleBulkDeleteConfirm,
+            disabled: panel.isBulkSubmitting,
+            loadingLabel: "...",
+          },
+          {
+            label: "Cancelar",
+            variant: "outline",
+            onClick: () => {
+              panel.setBulkConfirmIds(null);
+              panel.setBulkError("");
+            },
+            disabled: panel.isBulkSubmitting,
+          },
+        ]}
+      />
+
       <div className="w-full min-w-0">
         {panel.isDataLoading ? (
-          <AdminTableSkeleton variant="sales" />
+          <AdminTableSkeleton variant="sales" showSelection />
         ) : (
           <AdminSalesTable
             sales={panel.sales}
@@ -183,6 +224,31 @@ export default function AdminSalesPage() {
               panel.setDeleteError("");
             }}
             canDeleteSale={panel.canDeleteSale}
+            selectedIds={panel.selectedIds}
+            onSelectionChange={panel.setSelectedIds}
+            tableFooter={
+              <AdminTableBulkFooter
+                selectedCount={panel.selectedIds.length}
+                isSubmitting={panel.isBulkSubmitting}
+                onCancelSelection={() => {
+                  panel.clearSelection();
+                }}
+              >
+                <Button
+                  type="button"
+                  variant="delete"
+                  size="sm"
+                  onClick={() => {
+                    if (panel.selectedIds.length === 0) return;
+                    panel.setBulkConfirmIds([...panel.selectedIds]);
+                    panel.setBulkError("");
+                  }}
+                  disabled={panel.isBulkSubmitting}
+                >
+                  Eliminar
+                </Button>
+              </AdminTableBulkFooter>
+            }
           />
         )}
       </div>

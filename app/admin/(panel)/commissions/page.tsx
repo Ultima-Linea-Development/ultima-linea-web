@@ -14,6 +14,7 @@ import { ADMIN_PAGE_PADDING_CLASS } from "@/components/admin/AdminTable";
 import AdminSearchInput from "@/components/admin/AdminSearchInput";
 import AdminCommissionSearchSuggestion from "@/components/admin/AdminCommissionSearchSuggestion";
 import ConfirmDeleteModal from "@/components/admin/ConfirmDeleteModal";
+import AdminTableBulkFooter from "@/components/admin/AdminTableBulkFooter";
 import { Button } from "@/components/ui/button";
 import { useAdminCommissionsPanel } from "@/lib/hooks/use-admin-commissions-panel";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,12 @@ export default function AdminCommissionsPage() {
           duration={panel.undoDuration}
           onClose={panel.dismissDeleteToast}
           onUndo={panel.undoDelete}
+        />
+        <Alert
+          open={!!panel.bulkError}
+          message={panel.bulkError}
+          variant="destructive"
+          onClose={() => panel.setBulkError("")}
         />
       </div>
 
@@ -220,9 +227,43 @@ export default function AdminCommissionsPage() {
         ]}
       />
 
+      <ConfirmDeleteModal
+        open={!!panel.bulkConfirmIds?.length}
+        onClose={() => {
+          panel.setBulkConfirmIds(null);
+          panel.setBulkError("");
+        }}
+        title="Eliminar encargos"
+        message={
+          <>
+            Estás seguro que deseas eliminar {panel.bulkConfirmIds?.length ?? 0} encargo
+            {panel.bulkConfirmIds?.length === 1 ? "" : "s"}?
+          </>
+        }
+        error={panel.bulkError}
+        actions={[
+          {
+            label: "Eliminar",
+            variant: "delete",
+            onClick: panel.handleBulkDeleteConfirm,
+            disabled: panel.isBulkSubmitting,
+            loadingLabel: "...",
+          },
+          {
+            label: "Cancelar",
+            variant: "outline",
+            onClick: () => {
+              panel.setBulkConfirmIds(null);
+              panel.setBulkError("");
+            },
+            disabled: panel.isBulkSubmitting,
+          },
+        ]}
+      />
+
       <div className="w-full min-w-0">
         {panel.isDataLoading ? (
-          <AdminTableSkeleton variant="sales" />
+          <AdminTableSkeleton variant="sales" showSelection />
         ) : (
           <AdminCommissionsTable
             commissions={panel.commissions}
@@ -246,6 +287,29 @@ export default function AdminCommissionsPage() {
               panel.setDeleteError("");
             }}
             canDeleteCommission={panel.canDeleteCommission}
+            selectedIds={panel.selectedIds}
+            onSelectionChange={panel.setSelectedIds}
+            tableFooter={
+              <AdminTableBulkFooter
+                selectedCount={panel.selectedIds.length}
+                isSubmitting={panel.isBulkSubmitting}
+                onCancelSelection={panel.clearSelection}
+              >
+                <Button
+                  type="button"
+                  variant="delete"
+                  size="sm"
+                  onClick={() => {
+                    if (panel.selectedIds.length === 0) return;
+                    panel.setBulkConfirmIds([...panel.selectedIds]);
+                    panel.setBulkError("");
+                  }}
+                  disabled={panel.isBulkSubmitting}
+                >
+                  Eliminar
+                </Button>
+              </AdminTableBulkFooter>
+            }
           />
         )}
       </div>

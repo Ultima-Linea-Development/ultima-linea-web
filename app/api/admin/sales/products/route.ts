@@ -7,7 +7,7 @@ import {
   requireStaff,
   requireAuth,
 } from "@/lib/server/auth-middleware";
-import { toProductResponse } from "@/lib/server/products";
+import { toProductResponse, nonDeletedProductFilter } from "@/lib/server/products";
 
 export async function GET(request: NextRequest) {
   const auth = requireStaff(requireAuth(request));
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     const collection = await getProductsCollection<ProductDocument>();
     const docs = await collection
-      .find({})
+      .find(nonDeletedProductFilter)
       .sort({ created_at: -1, _id: -1 })
       .toArray();
 

@@ -12,16 +12,20 @@ import AdminCommissionSellerField from "@/components/admin/AdminCommissionSeller
 import AdminSaleDateField from "@/components/admin/AdminSaleDateField";
 import AdminSupplierOrderLineItemRow, {
   createEmptySupplierOrderLineItemDraft,
+  getSupplierOrderLineItemIdentityRequestFields,
   getSupplierOrderLineItemDraftTotal,
+  validateSupplierOrderLineItemIdentity,
   type SupplierOrderLineItemDraft,
 } from "@/components/admin/AdminSupplierOrderLineItemRow";
 import type {
   CreateCommissionRequest,
   ExternalSeller,
   Product,
+  ProductOptionsResponse,
   SaleAssignableUser,
 } from "@/lib/api";
 import { productsApi } from "@/lib/api";
+import { EMPTY_PRODUCT_OPTIONS } from "@/lib/product-options";
 import {
   commissionSellerValueToPayload,
   createDefaultCommissionSellerValue,
@@ -55,6 +59,7 @@ function draftToRequestItem(item: SupplierOrderLineItemDraft) {
   return {
     product_id: item.productId,
     shirt_name: item.productName.trim(),
+    ...getSupplierOrderLineItemIdentityRequestFields(item),
     quantity: sizesPayload.quantity,
     type: item.type,
     sizes: sizesPayload.sizes,
@@ -75,6 +80,9 @@ function validateLineItems(lineItems: SupplierOrderLineItemDraft[]): string | nu
     if (!item.productName.trim()) {
       return "Cada producto necesita un nombre.";
     }
+
+    const identityError = validateSupplierOrderLineItemIdentity(item);
+    if (identityError) return identityError;
 
     const sizesPayload = sizeRowsToPayload(item.sizeRows);
     if (!sizesPayload) {
@@ -111,19 +119,21 @@ export default function AdminCommissionForm({
   const [lineItems, setLineItems] = useState<SupplierOrderLineItemDraft[]>([
     createEmptySupplierOrderLineItemDraft(),
   ]);
-  const [sizeOptions, setSizeOptions] = useState<string[]>([]);
+  const [productOptions, setProductOptions] = useState<ProductOptionsResponse>(
+    EMPTY_PRODUCT_OPTIONS
+  );
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadSizeOptions = async () => {
+    const loadProductOptions = async () => {
       const response = await productsApi.getOptions();
       if (isMounted && response.data) {
-        setSizeOptions(response.data.sizes);
+        setProductOptions(response.data);
       }
     };
 
-    void loadSizeOptions();
+    void loadProductOptions();
 
     return () => {
       isMounted = false;
@@ -269,7 +279,7 @@ export default function AdminCommissionForm({
               key={item.key}
               item={item}
               products={products}
-              sizeOptions={sizeOptions}
+              productOptions={productOptions}
               isSubmitting={isSubmitting}
               onChange={updateLineItem}
               onRemove={removeLineItem}

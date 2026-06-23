@@ -3,12 +3,14 @@
 import Box from "@/components/layout/Box";
 import Div from "@/components/ui/Div";
 import FormField from "@/components/ui/FormField";
-import Input from "@/components/ui/Input";
+import Input, { InputAdornment } from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
-import { Button } from "@/components/ui/button";
+import Icon from "@/components/ui/Icons";
 import ProductOptionSelect from "@/components/admin/ProductOptionSelect";
 import { AdminProductNameFieldLabel } from "@/components/admin/AdminProductNameGuide";
 import { type ShirtType } from "@/lib/utils";
+
+export type ProductVersionFieldValue = ShirtType | "";
 
 const SHIRT_TYPE_OPTIONS: Array<{ value: ShirtType; label: string }> = [
   { value: "fan", label: "Fan" },
@@ -48,8 +50,8 @@ type AdminProductIdentityFieldsProps = {
   isCustomSeason: boolean;
   onSeasonChange: (value: string) => void;
   onCustomSeasonChange: (value: boolean) => void;
-  shirtType: ShirtType;
-  onShirtTypeChange: (value: ShirtType) => void;
+  shirtType: ProductVersionFieldValue;
+  onShirtTypeChange: (value: ProductVersionFieldValue) => void;
 };
 
 export default function AdminProductIdentityFields({
@@ -100,17 +102,19 @@ export default function AdminProductIdentityFields({
               required
               placeholder="Camiseta Alternativa Arsenal 2025/2026 Versión Fan"
               disabled={disabled}
+              endIcon={
+                isNameManuallyEdited ? (
+                  <InputAdornment
+                    aria-label="Regenerar nombre"
+                    title="Regenerar nombre"
+                    onClick={onRegenerateName}
+                    disabled={disabled}
+                  >
+                    <Icon name="rollback" className="size-4" aria-hidden />
+                  </InputAdornment>
+                ) : null
+              }
             />
-            {isNameManuallyEdited && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onRegenerateName}
-                disabled={disabled}
-              >
-                Regenerar
-              </Button>
-            )}
           </Box>
         </FormField>
       </Div>
@@ -144,14 +148,14 @@ export default function AdminProductIdentityFields({
           />
         </Div>
         <Div spacing="md" className="min-w-[160px] flex-1">
-          <FormField htmlFor={`${idPrefix}-shirt-type`} label="Versión" required>
+          <FormField htmlFor={`${idPrefix}-shirt-type`} label="Versión">
             <Select
               id={`${idPrefix}-shirt-type`}
               value={shirtType}
-              onChange={(e) => onShirtTypeChange(e.target.value as ShirtType)}
-              required
+              onChange={(e) => onShirtTypeChange(e.target.value as ProductVersionFieldValue)}
               disabled={disabled}
             >
+              <option value="">Sin versión</option>
               {SHIRT_TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -174,7 +178,6 @@ export default function AdminProductIdentityFields({
             onCustomChange={onCustomTeamChange}
             customPlaceholder="Ingresá el equipo"
             disabled={disabled}
-            required
           />
         </Div>
         <Div spacing="md" className="min-w-[200px] flex-1">
@@ -188,7 +191,6 @@ export default function AdminProductIdentityFields({
             onCustomChange={onCustomLeagueChange}
             customPlaceholder="Ingresá la liga"
             disabled={disabled}
-            required
           />
         </Div>
         <Div spacing="md" className="min-w-[160px] flex-1">
@@ -202,7 +204,6 @@ export default function AdminProductIdentityFields({
             onCustomChange={onCustomSeasonChange}
             customPlaceholder="Ingresá la temporada"
             disabled={disabled}
-            required
           />
         </Div>
       </Box>

@@ -13,6 +13,7 @@ import AdminUserSearchSuggestion from "@/components/admin/AdminUserSearchSuggest
 import AdminUserForm from "@/components/admin/AdminUserForm";
 import AdminUserEditForm from "@/components/admin/AdminUserEditForm";
 import ConfirmDeleteModal from "@/components/admin/ConfirmDeleteModal";
+import AdminTableBulkFooter from "@/components/admin/AdminTableBulkFooter";
 import { useAdminUsersPanel } from "@/lib/hooks/use-admin-users-panel";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +61,12 @@ export default function AdminUsersPage() {
         duration={panel.undoDuration}
         onClose={panel.dismissDeleteToast}
         onUndo={panel.undoDelete}
+      />
+      <Alert
+        open={!!panel.bulkError}
+        message={panel.bulkError}
+        variant="destructive"
+        onClose={() => panel.setBulkError("")}
       />
       </div>
 
@@ -146,9 +153,42 @@ export default function AdminUsersPage() {
         ]}
       />
 
+      <ConfirmDeleteModal
+        open={!!panel.bulkConfirmIds?.length}
+        onClose={() => {
+          panel.setBulkConfirmIds(null);
+          panel.setBulkError("");
+        }}
+        title="Eliminar usuarios"
+        message={
+          <>
+            Estás seguro que deseas eliminar {panel.bulkConfirmIds?.length ?? 0} usuario
+            {panel.bulkConfirmIds?.length === 1 ? "" : "s"}?
+          </>
+        }
+        error={panel.bulkError}
+        actions={[
+          {
+            label: "Eliminar",
+            variant: "delete",
+            onClick: panel.handleBulkDeleteConfirm,
+            disabled: panel.isBulkSubmitting,
+          },
+          {
+            label: "Cancelar",
+            variant: "ghost",
+            onClick: () => {
+              panel.setBulkConfirmIds(null);
+              panel.setBulkError("");
+            },
+            disabled: panel.isBulkSubmitting,
+          },
+        ]}
+      />
+
       <div className="w-full min-w-0">
         {panel.isDataLoading ? (
-          <AdminTableSkeleton variant="users" />
+          <AdminTableSkeleton variant="users" showSelection />
         ) : (
           <AdminUsersTable
             users={panel.users}
@@ -167,6 +207,30 @@ export default function AdminUsersPage() {
               panel.setDeleteConfirmUser(user);
               panel.setDeleteError("");
             }}
+            canSelectUser={panel.canSelectUser}
+            selectedIds={panel.selectedIds}
+            onSelectionChange={panel.setSelectedIds}
+            tableFooter={
+              <AdminTableBulkFooter
+                selectedCount={panel.selectedIds.length}
+                isSubmitting={panel.isBulkSubmitting}
+                onCancelSelection={panel.clearSelection}
+              >
+                <Button
+                  type="button"
+                  variant="delete"
+                  size="sm"
+                  onClick={() => {
+                    if (panel.selectedIds.length === 0) return;
+                    panel.setBulkConfirmIds([...panel.selectedIds]);
+                    panel.setBulkError("");
+                  }}
+                  disabled={panel.isBulkSubmitting}
+                >
+                  Eliminar
+                </Button>
+              </AdminTableBulkFooter>
+            }
           />
         )}
       </div>

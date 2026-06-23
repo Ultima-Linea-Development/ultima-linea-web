@@ -1,6 +1,7 @@
 import { generateSlug } from "@/lib/utils";
 
 export type ProductVersion = "fan" | "player" | "retro";
+export type ProductVersionValue = ProductVersion | "";
 
 export type ProductNameInput = {
   productType?: string | null;
@@ -124,7 +125,13 @@ export function inferProductType(input: {
   type?: string | null;
   name?: string | null;
   season?: string | null;
-}): ProductVersion {
+}): ProductVersionValue {
+  const typeValue = (input.type ?? "").trim();
+  const nameValue = (input.name ?? "").trim();
+  if (!typeValue && !/\bretro\b/i.test(nameValue) && !/\bversi[oó]n\s+(?:fan|player|retro)\b/i.test(nameValue)) {
+    return "";
+  }
+
   return resolveProductVersion(input.type, input.name, input.season);
 }
 
@@ -139,15 +146,13 @@ export function buildProductName(input: ProductNameInput): string {
   const team = input.team.trim();
   const normalizedSeason = normalizeSeason(input.season);
   const kitType = (input.kitType ?? extractKitTypeFromName(input.name ?? ""))?.trim();
-  const version = labelProductVersion(
-    resolveProductVersion(input.type, input.name, input.season)
-  );
+  const version = inferProductType(input);
 
   const parts = [productType];
   if (kitType) parts.push(kitType);
   if (team) parts.push(team);
   if (normalizedSeason) parts.push(normalizedSeason);
-  parts.push(version);
+  if (version) parts.push(labelProductVersion(version));
 
   return parts.join(" ");
 }
@@ -156,7 +161,7 @@ export function applyProductNameNormalization(input: ProductNameInput): {
   name: string;
   slug: string;
   season: string;
-  type: ProductVersion;
+  type: ProductVersionValue;
 } {
   const season = normalizeSeason(input.season);
   const type = inferProductType({ ...input, season });

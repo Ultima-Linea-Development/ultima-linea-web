@@ -36,13 +36,17 @@ export async function GET() {
     await ensureIndexes();
 
     const collection = await getProductsCollection<ProductDocument>();
+    const activeProductFilter = {
+      is_active: true,
+      deleted_at: { $exists: false },
+    };
     const [teams, leagues, sizes, products] = await Promise.all([
-      collection.distinct("team", { is_active: true }),
-      collection.distinct("league", { is_active: true }),
-      collection.distinct("sizes", { is_active: true }),
+      collection.distinct("team", activeProductFilter),
+      collection.distinct("league", activeProductFilter),
+      collection.distinct("sizes", activeProductFilter),
       collection
         .find(
-          { is_active: true },
+          activeProductFilter,
           { projection: { name: 1, season: 1 } }
         )
         .toArray(),

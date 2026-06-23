@@ -18,7 +18,10 @@ export async function GET(request: NextRequest) {
     if (Number.isNaN(perPage) || perPage < 1) perPage = 10;
     if (perPage > 50) perPage = 50;
 
-    const filter: Record<string, unknown> = { is_active: true };
+    const filter: Record<string, unknown> = {
+      is_active: true,
+      deleted_at: { $exists: false },
+    };
 
     const team = searchParams.get("team");
     const league = searchParams.get("league");

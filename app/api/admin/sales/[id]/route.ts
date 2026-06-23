@@ -19,6 +19,7 @@ import {
   shouldUnsetOptionalSaleText,
   type SaleSellerType,
 } from "@/lib/server/sale-seller";
+import { trackAdminAction } from "@/lib/server/admin-history";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -214,6 +215,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     if (!updatedDoc) return jsonError("Venta no encontrada", 404);
 
+    await trackAdminAction({
+      auth,
+      action: "update",
+      resource: "sale",
+      resourceId: id,
+      resourceLabel: `Venta ${id}`,
+    });
+
     return NextResponse.json({ sale: normalizeSaleForResponse(updatedDoc) });
   } catch {
     return jsonError("Failed to update sale", 500);
@@ -263,6 +272,14 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
     const result = await sales.deleteOne({ _id: id });
     if (result.deletedCount === 0) return jsonError("Venta no encontrada", 404);
+
+    await trackAdminAction({
+      auth,
+      action: "delete",
+      resource: "sale",
+      resourceId: id,
+      resourceLabel: `Venta ${id}`,
+    });
 
     return NextResponse.json({
       message: "Venta eliminada correctamente",

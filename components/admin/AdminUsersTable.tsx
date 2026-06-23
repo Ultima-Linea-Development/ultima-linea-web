@@ -1,10 +1,16 @@
 "use client";
 
+import { useMemo, type ReactNode } from "react";
 import Box from "@/components/layout/Box";
 import Typography from "@/components/ui/Typography";
 import AdminTableMobileActionsMenu, {
   type AdminTableMobileAction,
 } from "@/components/admin/AdminTableMobileActionsMenu";
+import {
+  AdminTableSelectAllHeader,
+  AdminTableSelectAllMobileRow,
+  AdminTableRowCheckbox,
+} from "@/components/admin/AdminTableSelectionControls";
 import {
   AdminTable,
   AdminTableEmptyRow,
@@ -19,6 +25,7 @@ import {
   adminTableRowClassName,
 } from "@/components/admin/AdminTable";
 import type { AdminUser } from "@/lib/api";
+import { useAdminTableRowSelection } from "@/lib/hooks/use-admin-table-selection";
 import { formatUserRole } from "@/lib/roles";
 import { formatSaleDateDisplay } from "@/lib/sale-date";
 
@@ -33,6 +40,10 @@ type AdminUsersTableProps = {
   onPageChange: (page: number) => void;
   onEdit?: (user: AdminUser) => void;
   onDelete?: (user: AdminUser) => void;
+  canSelectUser?: (user: AdminUser) => boolean;
+  selectedIds?: string[];
+  onSelectionChange?: (ids: string[]) => void;
+  tableFooter?: ReactNode;
 };
 
 function formatUserName(user: AdminUser) {
@@ -40,9 +51,14 @@ function formatUserName(user: AdminUser) {
   return name || "—";
 }
 
-function renderUsersTableHeader(hasActions: boolean) {
+function renderUsersTableHeader(hasActions: boolean, showSelection: boolean) {
   return (
     <tr>
+      {showSelection ? (
+        <th className={ADMIN_TABLE_TH_CLASS}>
+          <span className="sr-only">Seleccionar</span>
+        </th>
+      ) : null}
       <th className={ADMIN_TABLE_TH_CLASS}>
         <Typography variant="body2">Nombre</Typography>
       </th>
@@ -58,11 +74,11 @@ function renderUsersTableHeader(hasActions: boolean) {
       <th className={ADMIN_TABLE_TH_CLASS}>
         <Typography variant="body2">Creado</Typography>
       </th>
-      {hasActions && (
+      {hasActions ? (
         <th className={ADMIN_TABLE_TH_CLASS}>
           <Typography variant="body2">Acciones</Typography>
         </th>
-      )}
+      ) : null}
     </tr>
   );
 }
@@ -76,10 +92,35 @@ export default function AdminUsersTable({
   onPageChange,
   onEdit,
   onDelete,
+  canSelectUser,
+  selectedIds = [],
+  onSelectionChange,
+  tableFooter,
 }: AdminUsersTableProps) {
   const cellClass = ADMIN_TABLE_CELL_CLASS;
   const hasActions = Boolean(onEdit || onDelete);
-  const columnCount = hasActions ? 6 : 5;
+  const visibleIds = users.map((user) => user.id);
+  const selectableVisibleIds = useMemo(
+    () =>
+      users
+        .filter((user) => !canSelectUser || canSelectUser(user))
+        .map((user) => user.id),
+    [users, canSelectUser]
+  );
+  const {
+    selectAllRef,
+    allVisibleSelected,
+    handleToggleRow,
+    handleToggleAll,
+    isRowSelected,
+  } = useAdminTableRowSelection({
+    visibleIds,
+    selectedIds,
+    onSelectionChange,
+    selectableVisibleIds,
+  });
+  const colSpan = (onSelectionChange ? 1 : 0) + (hasActions ? 6 : 5);
+  const isRowSelectable = (user: AdminUser) => !canSelectUser || canSelectUser(user);
 
   const getRowActions = (user: AdminUser): AdminTableMobileAction[] => {
     const actions: AdminTableMobileAction[] = [];
@@ -93,7 +134,7 @@ export default function AdminUsersTable({
       });
     }
 
-    if (onDelete && !user.is_primary_admin) {
+    if (onDelete && isRowSelectable(user)) {
       actions.push({
         id: "delete",
         label: "Eliminar",
@@ -106,6 +147,38 @@ export default function AdminUsersTable({
     return actions;
   };
 
+  const renderDesktopHeader = () => (
+    <tr>
+      {onSelectionChange ? (
+        <AdminTableSelectAllHeader
+          selectAllRef={selectAllRef}
+          checked={allVisibleSelected}
+          onChange={handleToggleAll}
+        />
+      ) : null}
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Nombre</Typography>
+      </th>
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Email</Typography>
+      </th>
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Teléfono</Typography>
+      </th>
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Rol</Typography>
+      </th>
+      <th className={ADMIN_TABLE_TH_CLASS}>
+        <Typography variant="body2">Creado</Typography>
+      </th>
+      {hasActions ? (
+        <th className={ADMIN_TABLE_TH_CLASS}>
+          <Typography variant="body2">Acciones</Typography>
+        </th>
+      ) : null}
+    </tr>
+  );
+
   return (
     <Box display="flex" direction="col" gap="4" className="w-full min-w-0">
       {users.length === 0 ? (
@@ -113,23 +186,43 @@ export default function AdminUsersTable({
           <AdminTableMobileEmpty message="No hay usuarios" />
           <AdminTable>
             <thead className="bg-muted/50">
-              {renderUsersTableHeader(hasActions)}
+              {renderUsersTableHeader(hasActions, Boolean(onSelectionChange))}
             </thead>
             <tbody>
-              <AdminTableEmptyRow colSpan={columnCount} message="No hay usuarios" />
+              <AdminTableEmptyRow colSpan={colSpan} message="No hay usuarios" />
             </tbody>
           </AdminTable>
         </>
       ) : (
         <>
           <AdminTableMobileList>
+            {onSelectionChange && selectableVisibleIds.length > 0 ? (
+              <AdminTableSelectAllMobileRow
+                checked={allVisibleSelected}
+                onChange={handleToggleAll}
+              />
+            ) : null}
             {users.map((user, index) => (
-              <AdminTableMobileCard key={user.id} stripeIndex={index}>
+              <AdminTableMobileCard
+                key={user.id}
+                selected={isRowSelected(user.id)}
+                stripeIndex={index}
+              >
                 <Box display="flex" justify="between" align="start" gap="2" className="w-full min-w-0">
-                  <Typography variant="body2" className="min-w-0 font-medium leading-snug">
-                    {formatUserName(user)}
-                  </Typography>
-                  {hasActions && <AdminTableMobileActionsMenu actions={getRowActions(user)} />}
+                  <Box display="flex" align="start" gap="2" className="min-w-0">
+                    {onSelectionChange && isRowSelectable(user) ? (
+                      <AdminTableRowCheckbox
+                        checked={isRowSelected(user.id)}
+                        onChange={() => handleToggleRow(user.id)}
+                        label={`Seleccionar ${formatUserName(user)}`}
+                        className="mt-0.5"
+                      />
+                    ) : null}
+                    <Typography variant="body2" className="min-w-0 font-medium leading-snug">
+                      {formatUserName(user)}
+                    </Typography>
+                  </Box>
+                  {hasActions ? <AdminTableMobileActionsMenu actions={getRowActions(user)} /> : null}
                 </Box>
                 <Typography variant="caption" className="block break-all leading-snug text-foreground/80">
                   {user.email}
@@ -145,15 +238,27 @@ export default function AdminUsersTable({
           </AdminTableMobileList>
 
           <AdminTable>
-            <thead className="bg-muted/50">
-              {renderUsersTableHeader(hasActions)}
-            </thead>
+            <thead className="bg-muted/50">{renderDesktopHeader()}</thead>
             <tbody>
               {users.map((user, index) => (
                 <tr
                   key={user.id}
-                  className={adminTableRowClassName({ stripeIndex: index })}
+                  className={adminTableRowClassName({
+                    stripeIndex: index,
+                    selected: isRowSelected(user.id),
+                  })}
                 >
+                  {onSelectionChange ? (
+                    <td className={cellClass}>
+                      {isRowSelectable(user) ? (
+                        <AdminTableRowCheckbox
+                          checked={isRowSelected(user.id)}
+                          onChange={() => handleToggleRow(user.id)}
+                          label={`Seleccionar ${formatUserName(user)}`}
+                        />
+                      ) : null}
+                    </td>
+                  ) : null}
                   <td className={cellClass}>
                     <Typography variant="body2">{formatUserName(user)}</Typography>
                   </td>
@@ -173,17 +278,19 @@ export default function AdminUsersTable({
                       {formatSaleDateDisplay(user.created_at)}
                     </Typography>
                   </td>
-                  {hasActions && (
+                  {hasActions ? (
                     <td className={ADMIN_TABLE_ACTIONS_CELL_CLASS}>
                       <AdminTableMobileActionsMenu actions={getRowActions(user)} />
                     </td>
-                  )}
+                  ) : null}
                 </tr>
               ))}
             </tbody>
           </AdminTable>
         </>
       )}
+
+      {tableFooter}
 
       <AdminTablePagination
         page={page}

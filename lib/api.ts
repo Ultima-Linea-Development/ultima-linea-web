@@ -150,6 +150,7 @@ export type Product = {
   created_by?: string;
   created_at?: string;
   updated_at?: string;
+  deleted_at?: string;
 };
 
 export type ProductFilters = {
@@ -158,6 +159,7 @@ export type ProductFilters = {
   size?: string;
   season?: string;
   is_active?: boolean;
+  deleted?: boolean;
   page?: number;
   per_page?: number;
 };
@@ -179,6 +181,34 @@ export type SearchResponse = {
   query: string;
   total: number;
   results: Product[];
+};
+
+export type AdminHistoryAction = "create" | "update" | "delete" | "restore";
+
+export type AdminHistoryResource =
+  | "product"
+  | "sale"
+  | "supplier_order"
+  | "commission";
+
+export type AdminHistoryEntry = {
+  id: string;
+  action: AdminHistoryAction;
+  resource: AdminHistoryResource;
+  resource_id: string;
+  resource_label: string;
+  actor_id: string;
+  actor_email?: string;
+  actor_role?: string;
+  created_at: string;
+};
+
+export type PaginatedAdminHistoryResponse = {
+  history: AdminHistoryEntry[];
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
 };
 
 export type AdminSalesSearchResponse = {
@@ -215,7 +245,7 @@ export type CreateProductRequest = {
   sizes: string[];
   stock_by_sizes: Record<string, number>;
   image_urls: string[];
-  type?: "fan" | "player" | "retro";
+  type?: "fan" | "player" | "retro" | "";
   is_active?: boolean;
 };
 
@@ -253,6 +283,11 @@ export type SupplierOrderLineItem = {
   id: string;
   product_id?: string;
   shirt_name: string;
+  product_type?: string;
+  kit_type?: string;
+  team?: string;
+  league?: string;
+  season?: string;
   quantity: number;
   type: SupplierOrderItemType;
   sizes: string;
@@ -298,6 +333,7 @@ export type SupplierOrder = {
   received_at?: string;
   items: SupplierOrderLineItem[];
   created_by?: string;
+  catalog_exported_at?: string;
   created_at: string;
   updated_at: string;
 };
@@ -306,6 +342,11 @@ export type CreateSupplierOrderItemRequest = {
   id?: string;
   product_id?: string;
   shirt_name: string;
+  product_type?: string;
+  kit_type?: string;
+  team?: string;
+  league?: string;
+  season?: string;
   quantity: number;
   type: SupplierOrderItemType;
   sizes: string;
@@ -360,6 +401,12 @@ export type PaginatedSupplierOrdersResponse = {
   per_page: number;
   total: number;
   total_pages: number;
+};
+
+export type ExportSupplierOrderToCatalogResponse = {
+  order: SupplierOrder;
+  updated_products: number;
+  updated_items: number;
 };
 
 export type AdminSupplierOrdersSearchResponse = {
@@ -644,6 +691,9 @@ export const adminProductsApi = {
     if (filters?.is_active !== undefined) {
       params.append("is_active", String(filters.is_active));
     }
+    if (filters?.deleted !== undefined) {
+      params.append("deleted", String(filters.deleted));
+    }
     if (filters?.page != null) params.append("page", String(filters.page));
     if (filters?.per_page != null) params.append("per_page", String(filters.per_page));
 
@@ -654,13 +704,20 @@ export const adminProductsApi = {
     );
   },
 
-  search: (token: string, query: string, filters?: AdminProductSearchFilters) => {
+  search: (
+    token: string,
+    query: string,
+    filters?: AdminProductSearchFilters & { deleted?: boolean }
+  ) => {
     const params = new URLSearchParams();
     params.append("q", query);
     if (filters?.size) params.append("size", filters.size);
     if (filters?.league) params.append("league", filters.league);
     if (filters?.is_active !== undefined) {
       params.append("is_active", String(filters.is_active));
+    }
+    if (filters?.deleted !== undefined) {
+      params.append("deleted", String(filters.deleted));
     }
     return api.get<SearchResponse>(`/admin/products/search?${params.toString()}`, token);
   },
@@ -673,6 +730,26 @@ export const adminProductsApi = {
 
   delete: (id: string, token: string) =>
     api.delete<{ message: string }>(`/admin/products/${id}`, token),
+
+  restore: (id: string, token: string) =>
+    api.post<Product>(`/admin/products/${id}/restore`, {}, token),
+};
+
+export const adminHistoryApi = {
+  getAll: (token: string, filters?: { page?: number; per_page?: number }) => {
+    const params = new URLSearchParams();
+    if (filters?.page != null) params.append("page", String(filters.page));
+    if (filters?.per_page != null) params.append("per_page", String(filters.per_page));
+
+    const query = params.toString();
+    return api.get<PaginatedAdminHistoryResponse>(
+      `/admin/history${query ? `?${query}` : ""}`,
+      token
+    );
+  },
+
+  delete: (id: string, token: string) =>
+    api.delete<{ message: string }>(`/admin/history/${id}`, token),
 };
 
 export const adminSalesApi = {
@@ -780,6 +857,13 @@ export const adminOrdersApi = {
 
   update: (id: string, order: UpdateSupplierOrderRequest, token: string) =>
     api.put<{ order: SupplierOrder }>(`/admin/orders/${id}`, order, token),
+
+  exportToCatalog: (id: string, token: string) =>
+    api.post<ExportSupplierOrderToCatalogResponse>(
+      `/admin/orders/${id}/export-catalog`,
+      {},
+      token
+    ),
 
   delete: (id: string, token: string) =>
     api.delete<{ message: string }>(`/admin/orders/${id}`, token),

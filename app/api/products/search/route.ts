@@ -30,10 +30,14 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get("league");
     const size = searchParams.get("size");
 
-    const searchFilter: Record<string, unknown> = { is_active: true, ...textMatch };
+    const activeProductFilter = {
+      is_active: true,
+      deleted_at: { $exists: false },
+    };
+    const searchFilter: Record<string, unknown> = { ...activeProductFilter, ...textMatch };
 
     if (league || size) {
-      const andFilters: Record<string, unknown>[] = [textMatch];
+      const andFilters: Record<string, unknown>[] = [textMatch, activeProductFilter];
       if (league) andFilters.push({ league });
       if (size) andFilters.push(buildProductSizeFilter(size));
       delete searchFilter.$or;

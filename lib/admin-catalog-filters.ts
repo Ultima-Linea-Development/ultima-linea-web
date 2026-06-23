@@ -9,7 +9,10 @@ export function parseIsActiveFilterParam(value: string | null): boolean | undefi
 export function buildAdminCatalogMongoFilter(
   searchParams: URLSearchParams
 ): Record<string, unknown> {
-  const filter: Record<string, unknown> = {};
+  const showDeleted = searchParams.get("deleted") === "true";
+  const filter: Record<string, unknown> = showDeleted
+    ? { deleted_at: { $exists: true } }
+    : { deleted_at: { $exists: false } };
 
   const team = searchParams.get("team");
   const league = searchParams.get("league");

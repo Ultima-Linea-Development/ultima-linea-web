@@ -113,20 +113,52 @@ function MobileSubtextRow({ staggerIndex }: { staggerIndex?: number }) {
   );
 }
 
-function MobileSalesCardSkeleton({ staggerIndex }: { staggerIndex: number }) {
+function MobileSalesCardSkeleton({
+  showSelection,
+  staggerIndex,
+}: {
+  showSelection?: boolean;
+  staggerIndex: number;
+}) {
   return (
     <AdminTableMobileCard stripeIndex={staggerIndex}>
-      <MobileProductHeaderRow staggerIndex={staggerIndex} />
+      {showSelection ? (
+        <MobileProductHeaderRowWithCheckbox staggerIndex={staggerIndex} />
+      ) : (
+        <MobileProductHeaderRow staggerIndex={staggerIndex} />
+      )}
       <MobileSummaryRow staggerIndex={staggerIndex} />
       <MobileSubtextRow staggerIndex={staggerIndex} />
     </AdminTableMobileCard>
   );
 }
 
-function MobileUsersCardSkeleton({ staggerIndex }: { staggerIndex: number }) {
+function MobileUsersCardSkeleton({
+  showSelection,
+  staggerIndex,
+}: {
+  showSelection?: boolean;
+  staggerIndex: number;
+}) {
   return (
     <AdminTableMobileCard stripeIndex={staggerIndex}>
-      <MobileTitleActionsHeaderRow staggerIndex={staggerIndex} />
+      {showSelection ? (
+        <Box
+          display="flex"
+          justify="between"
+          align="start"
+          gap="2"
+          className={cn("w-full min-w-0", MOBILE_SKELETON_HEADER_MIN_H_CLASS)}
+        >
+          <Box display="flex" align="start" gap="2" className="min-w-0 flex-1">
+            <AdminLoadingShimmer className="size-4 shrink-0 rounded-sm mt-0.5" staggerIndex={staggerIndex} />
+            <AdminLoadingShimmer className={cn(SHIMMER_TEXT, "max-w-[9rem]")} staggerIndex={staggerIndex} />
+          </Box>
+          <AdminLoadingShimmer className="size-5 shrink-0 rounded-sm" staggerIndex={staggerIndex} />
+        </Box>
+      ) : (
+        <MobileTitleActionsHeaderRow staggerIndex={staggerIndex} />
+      )}
       <MobileSummaryRow staggerIndex={staggerIndex} showRight={false} />
       <MobileSubtextRow staggerIndex={staggerIndex} />
     </AdminTableMobileCard>
@@ -219,7 +251,13 @@ export default function AdminTableSkeleton({
 
   const renderMobileCard = (index: number) => {
     if (variant === "users") {
-      return <MobileUsersCardSkeleton key={index} staggerIndex={index} />;
+      return (
+        <MobileUsersCardSkeleton
+          key={index}
+          showSelection={showSelection}
+          staggerIndex={index}
+        />
+      );
     }
     if (variant === "products") {
       return (
@@ -230,7 +268,13 @@ export default function AdminTableSkeleton({
         />
       );
     }
-    return <MobileSalesCardSkeleton key={index} staggerIndex={index} />;
+    return (
+      <MobileSalesCardSkeleton
+        key={index}
+        showSelection={showSelection}
+        staggerIndex={index}
+      />
+    );
   };
 
   return (
@@ -258,7 +302,7 @@ export default function AdminTableSkeleton({
       ) : null}
 
       <AdminTableMobileList>
-          {showSelection && variant === "products" ? (
+          {showSelection ? (
             <Box
               display="flex"
               align="center"

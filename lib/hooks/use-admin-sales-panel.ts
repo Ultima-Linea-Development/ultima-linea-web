@@ -15,8 +15,10 @@ import {
   type UpdateSaleRequest,
 } from "@/lib/api";
 import { filterSalesByQuery } from "@/lib/admin-sales-search";
+import { filterProductsForSalePicker } from "@/lib/sale-products";
 import { normalizeSaleSearchQuery } from "@/lib/sale-items";
 import { useAdminSearch } from "@/lib/hooks/use-admin-search";
+import { useAdminTableSelection } from "@/lib/hooks/use-admin-table-selection";
 import { usePendingDelete } from "@/lib/use-pending-delete";
 
 type SalesListData = {
@@ -45,6 +47,18 @@ export function useAdminSalesPanel() {
   const [deleteConfirmSale, setDeleteConfirmSale] = useState<Sale | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
+
+  const {
+    selectedIds,
+    setSelectedIds,
+    bulkConfirmIds,
+    setBulkConfirmIds,
+    bulkError,
+    setBulkError,
+    isBulkSubmitting,
+    setIsBulkSubmitting,
+    clearSelection,
+  } = useAdminTableSelection();
 
   const {
     deleteToast,
@@ -96,13 +110,9 @@ export function useAdminSalesPanel() {
         page: 1,
         per_page: 50,
       });
-      if (fallback.data?.products) {
-        setProducts(fallback.data.products);
-      } else {
-        setProducts([]);
-      }
+      setProducts(filterProductsForSalePicker(fallback.data?.products ?? []));
     } else {
-      setProducts(productsResponse.data.products);
+      setProducts(filterProductsForSalePicker(productsResponse.data.products));
     }
 
     setAssignableUsers(usersResponse.data?.users ?? []);
@@ -307,6 +317,72 @@ export function useAdminSalesPanel() {
     []
   );
 
+  const handleBulkDeleteConfirm = useCallback(async () => {
+    if (!bulkConfirmIds?.length) return;
+
+    const ids = bulkConfirmIds;
+    const count = ids.length;
+    const salesSnapshot = salesData;
+    const idSet = new Set(ids);
+
+    setBulkConfirmIds(null);
+    clearSelection();
+    setIsBulkSubmitting(false);
+    setBulkError("");
+    setError("");
+
+    setSalesData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sales: prev.sales.filter((item) => !idSet.has(item.id)),
+        total: Math.max(0, prev.total - count),
+      };
+    });
+
+    await scheduleDelete({
+      message:
+        count === 1
+          ? "Venta eliminada correctamente."
+          : `${count} ventas eliminadas correctamente.`,
+      restore: () => setSalesData(salesSnapshot),
+      commit: async () => {
+        const token = getToken();
+        if (!token) {
+          setSalesData(salesSnapshot);
+          setBulkError("Sesión expirada.");
+          return;
+        }
+
+        let failed = 0;
+        for (const id of ids) {
+          const response = await adminSalesApi.delete(id, token);
+          if (response.error) failed += 1;
+        }
+
+        if (failed > 0) {
+          setSalesData(salesSnapshot);
+          setBulkError(`${failed} de ${count} no se pudieron eliminar.`);
+          invalidateSearchCache();
+          await refreshSalesPanel();
+          return;
+        }
+
+        invalidateSearchCache();
+        await refreshSalesPanel();
+      },
+    });
+  }, [
+    bulkConfirmIds,
+    salesData,
+    scheduleDelete,
+    refreshSalesPanel,
+    invalidateSearchCache,
+    clearSelection,
+    setIsBulkSubmitting,
+    setBulkError,
+  ]);
+
   const data = salesData ?? undefined;
   const sales = data?.sales ?? [];
   const total = data?.total ?? 0;
@@ -355,7 +431,16 @@ export function useAdminSalesPanel() {
     handleCreateSale,
     handleSaveEdit,
     handleConfirmDelete,
+    handleBulkDeleteConfirm,
     canDeleteSale,
+    selectedIds,
+    setSelectedIds,
+    bulkConfirmIds,
+    setBulkConfirmIds,
+    bulkError,
+    setBulkError,
+    isBulkSubmitting,
+    clearSelection,
     isAdmin: isAdmin(),
     getCurrentUserId,
     getToken,

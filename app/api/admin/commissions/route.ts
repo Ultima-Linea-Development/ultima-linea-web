@@ -26,6 +26,7 @@ import {
 } from "@/lib/server/commissions";
 import { resolveSaleSellerForCreate } from "@/lib/server/sale-seller";
 import { parseSaleDateInput } from "@/lib/sale-date";
+import { trackAdminAction } from "@/lib/server/admin-history";
 
 type CreateCommissionBody = {
   customer_name?: string;
@@ -137,6 +138,13 @@ export async function POST(request: NextRequest) {
 
     const collection = await getCommissionsCollection<CommissionDocument>();
     await collection.insertOne(commissionToDoc(commission));
+    await trackAdminAction({
+      auth,
+      action: "create",
+      resource: "commission",
+      resourceId: commission.id,
+      resourceLabel: commission.name,
+    });
 
     return NextResponse.json(
       { commission: normalizeCommissionForResponse(commission) },

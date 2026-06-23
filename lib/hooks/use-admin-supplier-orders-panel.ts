@@ -17,6 +17,7 @@ import {
 import { filterSupplierOrdersByQuery } from "@/lib/admin-supplier-orders-search";
 import { getSupplierOrderLabel } from "@/lib/supplier-order-display";
 import { useAdminSearch } from "@/lib/hooks/use-admin-search";
+import { useAdminTableSelection } from "@/lib/hooks/use-admin-table-selection";
 import { usePendingDelete } from "@/lib/use-pending-delete";
 
 type SupplierOrdersListData = {
@@ -44,6 +45,21 @@ export function useAdminSupplierOrdersPanel() {
   const [deleteConfirmOrder, setDeleteConfirmOrder] = useState<SupplierOrder | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
+  const [exportConfirmOrder, setExportConfirmOrder] = useState<SupplierOrder | null>(null);
+  const [exportError, setExportError] = useState("");
+  const [isExportSubmitting, setIsExportSubmitting] = useState(false);
+
+  const {
+    selectedIds,
+    setSelectedIds,
+    bulkConfirmIds,
+    setBulkConfirmIds,
+    bulkError,
+    setBulkError,
+    isBulkSubmitting,
+    setIsBulkSubmitting,
+    clearSelection,
+  } = useAdminTableSelection();
 
   const {
     deleteToast,
@@ -276,11 +292,114 @@ export function useAdminSupplierOrdersPanel() {
     });
   }, [deleteConfirmOrder, ordersData, scheduleDelete, refreshOrdersPanel, invalidateSearchCache]);
 
+  const handleExportToCatalog = useCallback(async () => {
+    if (!exportConfirmOrder) return;
+
+    await flushPendingDelete();
+    const token = getToken();
+    if (!token) {
+      setExportError("Sesión expirada. Volvé a iniciar sesión.");
+      return;
+    }
+
+    setExportError("");
+    setIsExportSubmitting(true);
+
+    const response = await adminOrdersApi.exportToCatalog(exportConfirmOrder.id, token);
+    if (response.error || !response.data) {
+      setExportError(response.error || "No se pudo exportar el pedido al catálogo.");
+      setIsExportSubmitting(false);
+      return;
+    }
+
+    setSuccess(
+      `Stock agregado al catálogo para ${response.data.updated_products} producto${
+        response.data.updated_products === 1 ? "" : "s"
+      }.`
+    );
+    setExportConfirmOrder(null);
+    invalidateSearchCache();
+    await refreshOrdersPanel();
+    setIsExportSubmitting(false);
+  }, [exportConfirmOrder, flushPendingDelete, invalidateSearchCache, refreshOrdersPanel]);
+
   const canDeleteOrder = useCallback(
     (order: SupplierOrder) =>
       canDeleteOwnedResource(getUserFromToken()?.role, getCurrentUserId(), order.created_by),
     []
   );
+
+  const canExportOrderToCatalog = useCallback(
+    (order: SupplierOrder) =>
+      !order.catalog_exported_at && order.items.some((item) => Boolean(item.product_id)),
+    []
+  );
+
+  const handleBulkDeleteConfirm = useCallback(async () => {
+    if (!bulkConfirmIds?.length) return;
+
+    const ids = bulkConfirmIds;
+    const count = ids.length;
+    const ordersSnapshot = ordersData;
+    const idSet = new Set(ids);
+
+    setBulkConfirmIds(null);
+    clearSelection();
+    setIsBulkSubmitting(false);
+    setBulkError("");
+    setError("");
+
+    setOrdersData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        orders: prev.orders.filter((item) => !idSet.has(item.id)),
+        total: Math.max(0, prev.total - count),
+      };
+    });
+
+    await scheduleDelete({
+      message:
+        count === 1
+          ? "Pedido eliminado correctamente."
+          : `${count} pedidos eliminados correctamente.`,
+      restore: () => setOrdersData(ordersSnapshot),
+      commit: async () => {
+        const token = getToken();
+        if (!token) {
+          setOrdersData(ordersSnapshot);
+          setBulkError("Sesión expirada.");
+          return;
+        }
+
+        let failed = 0;
+        for (const id of ids) {
+          const response = await adminOrdersApi.delete(id, token);
+          if (response.error) failed += 1;
+        }
+
+        if (failed > 0) {
+          setOrdersData(ordersSnapshot);
+          setBulkError(`${failed} de ${count} no se pudieron eliminar.`);
+          invalidateSearchCache();
+          await refreshOrdersPanel();
+          return;
+        }
+
+        invalidateSearchCache();
+        await refreshOrdersPanel();
+      },
+    });
+  }, [
+    bulkConfirmIds,
+    ordersData,
+    scheduleDelete,
+    refreshOrdersPanel,
+    invalidateSearchCache,
+    clearSelection,
+    setIsBulkSubmitting,
+    setBulkError,
+  ]);
 
   const data = ordersData ?? undefined;
   const orders = data?.orders ?? [];
@@ -324,12 +443,28 @@ export function useAdminSupplierOrdersPanel() {
     deleteError,
     setDeleteError,
     isDeleteSubmitting,
+    exportConfirmOrder,
+    setExportConfirmOrder,
+    exportError,
+    setExportError,
+    isExportSubmitting,
     applySearchFromQuery: (query: string) => applySearchFromQuery(query, resetPage),
     clearSearch: () => clearSearch(resetPage),
     handleCreateOrder,
     handleSaveEdit,
     handleConfirmDelete,
+    handleExportToCatalog,
+    handleBulkDeleteConfirm,
     canDeleteOrder,
+    canExportOrderToCatalog,
+    selectedIds,
+    setSelectedIds,
+    bulkConfirmIds,
+    setBulkConfirmIds,
+    bulkError,
+    setBulkError,
+    isBulkSubmitting,
+    clearSelection,
     getSupplierOrderLabel,
   };
 }

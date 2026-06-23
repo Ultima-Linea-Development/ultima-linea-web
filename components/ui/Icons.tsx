@@ -27,6 +27,8 @@ import {
   MdOutlineEditNote,
   MdOutlineSchedule,
   MdOutlineInfo,
+  MdOutlineHistory,
+  MdOutlineUndo,
 } from "react-icons/md";
 import { ComponentProps } from "react";
 
@@ -58,6 +60,8 @@ export const Icons = {
   draft: MdOutlineEditNote,
   pending: MdOutlineSchedule,
   info: MdOutlineInfo,
+  history: MdOutlineHistory,
+  rollback: MdOutlineUndo,
 } as const;
 
 export type IconName = keyof typeof Icons;

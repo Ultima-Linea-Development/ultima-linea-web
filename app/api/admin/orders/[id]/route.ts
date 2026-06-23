@@ -26,6 +26,7 @@ import {
   validateSupplierOrderTrackingLink,
 } from "@/lib/supplier-order-display";
 import { parseSaleDateInput } from "@/lib/sale-date";
+import { trackAdminAction } from "@/lib/server/admin-history";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -242,6 +243,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       return jsonError("Pedido no encontrado", 404);
     }
 
+    await trackAdminAction({
+      auth,
+      action: "update",
+      resource: "supplier_order",
+      resourceId: id,
+      resourceLabel: result.name,
+    });
+
     return NextResponse.json({ order: normalizeSupplierOrderForResponse(result) });
   } catch {
     return jsonError("Failed to update supplier order", 500);
@@ -266,6 +275,14 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     if (isNextResponse(deleteCheck)) return deleteCheck;
 
     await collection.deleteOne({ _id: id });
+    await trackAdminAction({
+      auth,
+      action: "delete",
+      resource: "supplier_order",
+      resourceId: id,
+      resourceLabel: existing.name,
+    });
+
     return NextResponse.json({ message: "Pedido eliminado" });
   } catch {
     return jsonError("Failed to delete supplier order", 500);

@@ -16,7 +16,6 @@ import {
   requireAuth,
 } from "@/lib/server/auth-middleware";
 import {
-  mapSaleSellerToCommissionFields,
   normalizeCommissionForResponse,
   parseCommissionLineItems,
   parseCommissionStatus,
@@ -25,6 +24,7 @@ import {
 import { resolveSaleSellerForUpdate } from "@/lib/server/sale-seller";
 import { buildDefaultCommissionName } from "@/lib/server/commissions";
 import { parseSaleDateInput } from "@/lib/sale-date";
+import { trackAdminAction } from "@/lib/server/admin-history";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -186,6 +186,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       return jsonError("Encargo no encontrado", 404);
     }
 
+    await trackAdminAction({
+      auth,
+      action: "update",
+      resource: "commission",
+      resourceId: id,
+      resourceLabel: result.name,
+    });
+
     return NextResponse.json({ commission: normalizeCommissionForResponse(result) });
   } catch {
     return jsonError("Failed to update commission", 500);
@@ -210,6 +218,14 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     if (isNextResponse(deleteCheck)) return deleteCheck;
 
     await collection.deleteOne({ _id: id });
+    await trackAdminAction({
+      auth,
+      action: "delete",
+      resource: "commission",
+      resourceId: id,
+      resourceLabel: existing.name,
+    });
+
     return NextResponse.json({ message: "Encargo eliminado" });
   } catch {
     return jsonError("Failed to delete commission", 500);

@@ -4,9 +4,10 @@ import {
   Product,
   ProductDocument,
   generateSlug,
-  generateSKUBase,
   productFromDoc,
 } from "./models";
+
+export const nonDeletedProductFilter = { deleted_at: { $exists: false } };
 
 export type ProductResponse = {
   id: string;
@@ -25,6 +26,8 @@ export type ProductResponse = {
   stock_by_sizes: Record<string, number>;
   image_urls: string[];
   is_active: boolean;
+  created_by?: string;
+  deleted_at?: Date;
 };
 
 export function toProductResponse(product: Product, maxImages: number): ProductResponse {
@@ -50,6 +53,8 @@ export function toProductResponse(product: Product, maxImages: number): ProductR
     stock_by_sizes: product.stock_by_sizes,
     image_urls: images,
     is_active: product.is_active,
+    created_by: product.created_by,
+    deleted_at: product.deleted_at,
   };
 }
 
@@ -132,6 +137,7 @@ export async function findProductByIdOrSlugOrSku(
 ): Promise<Product | null> {
   const filter: Record<string, unknown> = {
     $or: [{ _id: param }, { sku: param }, { slug: param }],
+    ...nonDeletedProductFilter,
   };
   if (activeOnly) filter.is_active = true;
 

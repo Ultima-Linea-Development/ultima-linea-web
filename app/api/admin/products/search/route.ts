@@ -38,15 +38,18 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get("league");
     const size = searchParams.get("size");
     const isActive = parseIsActiveFilterParam(searchParams.get("is_active"));
+    const showDeleted = searchParams.get("deleted") === "true";
 
-    const searchFilter: Record<string, unknown> = { ...textMatch };
+    const deletedFilter = showDeleted
+      ? { deleted_at: { $exists: true } }
+      : { deleted_at: { $exists: false } };
+    const searchFilter: Record<string, unknown> = { $and: [textMatch, deletedFilter] };
 
     if (league || size || isActive !== undefined) {
-      const andFilters: Record<string, unknown>[] = [textMatch];
+      const andFilters: Record<string, unknown>[] = [textMatch, deletedFilter];
       if (league) andFilters.push({ league });
       if (size) andFilters.push(buildProductSizeFilter(size));
       if (isActive !== undefined) andFilters.push({ is_active: isActive });
-      delete searchFilter.$or;
       searchFilter.$and = andFilters;
     }
 
