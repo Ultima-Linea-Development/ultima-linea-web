@@ -158,6 +158,7 @@ export type ProductFilters = {
   league?: string;
   size?: string;
   season?: string;
+  type?: "fan" | "player" | "retro";
   is_active?: boolean;
   deleted?: boolean;
   page?: number;
@@ -179,7 +180,10 @@ export type PaginatedProductsResponse = {
 
 export type SearchResponse = {
   query: string;
+  page: number;
+  per_page: number;
   total: number;
+  total_pages: number;
   results: Product[];
 };
 
@@ -618,6 +622,7 @@ export const productsApi = {
     if (filters?.league) params.append("league", filters.league);
     if (filters?.size) params.append("size", filters.size);
     if (filters?.season) params.append("season", filters.season);
+    if (filters?.type) params.append("type", filters.type);
     if (filters?.page != null) params.append("page", String(filters.page));
     if (filters?.per_page != null) params.append("per_page", String(filters.per_page));
 
@@ -628,11 +633,16 @@ export const productsApi = {
   getById: (id: string) => api.get<Product>(`/products/${id}`),
   getBySlug: (slug: string) => api.get<Product>(`/products/slug/${slug}`),
 
-  search: (query: string, filters?: Pick<ProductFilters, "size" | "league">) => {
+  search: (
+    query: string,
+    filters?: Pick<ProductFilters, "size" | "league" | "page" | "per_page">
+  ) => {
     const params = new URLSearchParams();
     params.append("q", query);
     if (filters?.size) params.append("size", filters.size);
     if (filters?.league) params.append("league", filters.league);
+    if (filters?.page != null) params.append("page", String(filters.page));
+    if (filters?.per_page != null) params.append("per_page", String(filters.per_page));
     return api.get<SearchResponse>(`/products/search?${params.toString()}`);
   },
 

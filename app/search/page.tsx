@@ -1,18 +1,32 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Container from "@/components/layout/Container";
 import Box from "@/components/layout/Box";
 import ProductCard from "@/components/ui/ProductCard";
 import Typography from "@/components/ui/Typography";
 import Spinner from "@/components/ui/Spinner";
 import Div from "@/components/ui/Div";
+import CatalogPagination, { CATALOG_SEARCH_PER_PAGE } from "@/components/ui/CatalogPagination";
 import { productsApi } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { NOINDEX_FOLLOW_METADATA } from "@/lib/seo";
 import { Suspense } from "react";
 
 type SearchPageProps = {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 };
+
+function parseSearchPage(value: string | undefined): number {
+  const page = parseInt(value || "1", 10);
+  if (Number.isNaN(page) || page < 1) return 1;
+  return page;
+}
+
+function buildSearchHref(query: string, page: number): string {
+  const params = new URLSearchParams({ q: query });
+  if (page > 1) params.set("page", String(page));
+  return `/search?${params.toString()}`;
+}
 
 export async function generateMetadata({
   searchParams,
@@ -28,7 +42,7 @@ export async function generateMetadata({
   };
 }
 
-async function SearchResults({ query }: { query: string }) {
+async function SearchResults({ query, page }: { query: string; page: number }) {
   if (!query) {
     return (
       <Div textAlign="center" py={8}>
@@ -39,7 +53,10 @@ async function SearchResults({ query }: { query: string }) {
     );
   }
 
-  const response = await productsApi.search(query);
+  const response = await productsApi.search(query, {
+    page,
+    per_page: CATALOG_SEARCH_PER_PAGE,
+  });
 
   if (response.error || !response.data) {
     return (
@@ -51,7 +68,11 @@ async function SearchResults({ query }: { query: string }) {
     );
   }
 
-  const { total, results } = response.data;
+  const { total, results, total_pages: totalPages } = response.data;
+
+  if (totalPages > 0 && page > totalPages) {
+    redirect(buildSearchHref(query, totalPages));
+  }
 
   if (total === 0) {
     return (
@@ -93,6 +114,12 @@ async function SearchResults({ query }: { query: string }) {
           />
         ))}
       </Box>
+      <CatalogPagination
+        page={page}
+        totalPages={totalPages}
+        getPageHref={(targetPage) => buildSearchHref(query, targetPage)}
+        className="mt-4"
+      />
     </>
   );
 }
@@ -100,12 +127,13 @@ async function SearchResults({ query }: { query: string }) {
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
   const query = params.q || "";
+  const page = parseSearchPage(params.page);
 
   return (
     <Container fullWidth>
       <Box display="flex" direction="col" justify="start" align="start" gap="2" className="w-full">
         <Suspense fallback={<Spinner />}>
-          <SearchResults query={query} />
+          <SearchResults query={query} page={page} />
         </Suspense>
       </Box>
     </Container>

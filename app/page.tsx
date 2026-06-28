@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Container from "@/components/layout/Container";
 import Box from "@/components/layout/Box";
 import Banner from "@/components/ui/Banner";
-import ProductsList from "./components/ProductsList";
+import HomeProducts from "./components/HomeProducts";
 import { Suspense } from "react";
 import Spinner from "@/components/ui/Spinner";
 
@@ -20,9 +20,9 @@ export default function Home() {
         imageMobile="/images/banners/banner-home-mobile.png"
       />
       <Container>
-        <Box display="flex" direction="col" justify="start" align="start" gap="2">
+        <Box display="flex" direction="col" justify="start" align="start" gap="8" className="w-full min-w-0 py-8">
           <Suspense fallback={<Spinner />}>
-            <ProductsList />
+            <HomeProducts />
           </Suspense>
         </Box>
       </Container>

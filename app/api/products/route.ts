@@ -4,6 +4,10 @@ import { ProductDocument, productFromDoc } from "@/lib/server/models";
 import { jsonError } from "@/lib/server/auth-middleware";
 import { ensureProductSlugs, toProductResponse } from "@/lib/server/products";
 import { buildProductSizeFilter } from "@/lib/admin-catalog-filters";
+import {
+  buildProductVersionFilter,
+  parseProductVersionParam,
+} from "@/lib/product-catalog-filters";
 import { buildFlexibleSearchRegexPattern } from "@/lib/search-normalization";
 
 export async function GET(request: NextRequest) {
@@ -26,10 +30,12 @@ export async function GET(request: NextRequest) {
     const team = searchParams.get("team");
     const league = searchParams.get("league");
     const size = searchParams.get("size");
+    const type = parseProductVersionParam(searchParams.get("type"));
 
     if (team) filter.team = { $regex: buildFlexibleSearchRegexPattern(team), $options: "i" };
     if (league) filter.league = league;
     if (size) Object.assign(filter, buildProductSizeFilter(size));
+    if (type) Object.assign(filter, buildProductVersionFilter(type));
 
     const collection = await getProductsCollection<ProductDocument>();
     const total = await collection.countDocuments(filter);
