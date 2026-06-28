@@ -13,16 +13,50 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare build env
+        run: |
+          umask 077
+          cat > .env <<EOF
+          NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          EOF
+
+      - name: Build Docker image
+        env:
+          DOCKER_BUILDKIT: 1
+          COMPOSE_DOCKER_CLI_BUILD: 1
+        run: docker compose build
+
       - name: Setup SSH key
         shell: bash
         run: |
           printf '%s\n' "$VPS_SSH_KEY" > "$SSH_KEY_PATH"
           chmod 600 "$SSH_KEY_PATH"
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           SSH_KEY_PATH: ${{ runner.temp }}/deploy_key
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
 
-      - name: Deploy via SSH
+      - name: Transfer image to VPS
+        shell: bash
+        run: |
+          ssh -i "$SSH_KEY_PATH" -p "$VPS_PORT" -o StrictHostKeyChecking=yes \
+            "$VPS_USER@$VPS_HOST" 'docker image prune -f --filter "until=24h" || true'
+          docker save ultima-linea-front:latest | gzip -1 | \
+            ssh -i "$SSH_KEY_PATH" -p "$VPS_PORT" -o StrictHostKeyChecking=yes \
+            "$VPS_USER@$VPS_HOST" 'gunzip | docker load'
+        env:
+          SSH_KEY_PATH: ${{ runner.temp }}/deploy_key
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+
+      - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.2.0
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
@@ -33,6 +67,7 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          SKIP_DOCKER_BUILD: "1"
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -40,8 +75,8 @@ jobs:
           key_path: ${{ runner.temp }}/deploy_key
           timeout: 120s
           script_stop: true
-          command_timeout: 30m
-          envs: MONGODB_URI,MONGODB_DATABASE,JWT_SECRET,NEXT_PUBLIC_SITE_URL,NODE_ENV,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET
+          command_timeout: 15m
+          envs: MONGODB_URI,MONGODB_DATABASE,JWT_SECRET,NEXT_PUBLIC_SITE_URL,NODE_ENV,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET,SKIP_DOCKER_BUILD
           script: |
             cd /srv/ultima-linea-front
             git fetch origin main

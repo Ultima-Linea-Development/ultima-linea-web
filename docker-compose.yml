@@ -2,6 +2,7 @@ version: "3.8"
 
 services:
   ultima_linea_front:
+    image: ultima-linea-front:latest
     build:
       context: .
       dockerfile: Dockerfile

@@ -17,10 +17,18 @@ if [[ -f scripts/sync-env.sh ]]; then
 fi
 
 echo ">> Building containers..."
-docker compose build
+if [[ "${SKIP_DOCKER_BUILD:-0}" == "1" ]]; then
+  echo ">> Skipping build (image prebuilt in CI)."
+else
+  docker compose build
+fi
 
 echo ">> Restarting containers..."
-docker compose up -d
+if [[ "${SKIP_DOCKER_BUILD:-0}" == "1" ]]; then
+  docker compose up -d --no-build
+else
+  docker compose up -d
+fi
 
 echo ">> Deploy complete."
 docker compose ps
