@@ -23,7 +23,7 @@ section "Top procesos por CPU"
 ps aux --sort=-%cpu | head -n 15
 
 section "Docker: resumen de espacio"
-docker system df -v 2>/dev/null || echo "Docker no disponible"
+timeout 30 docker system df 2>/dev/null || echo "docker system df tardó demasiado o no está disponible"
 
 section "Docker: contenedores"
 docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.Size}}" 2>/dev/null || true

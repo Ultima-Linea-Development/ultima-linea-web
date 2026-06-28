@@ -11,12 +11,13 @@ on:
         options:
           - diagnose
           - cleanup
+          - recover
           - both
 
 jobs:
   maintenance:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,14 +39,16 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           key_path: ${{ runner.temp }}/deploy_key
           timeout: 60s
-          command_timeout: 10m
+          command_timeout: 18m
           script: |
             cd /srv/ultima-linea-front
             git fetch origin main
             git checkout main
             git pull origin main
-            chmod +x scripts/vps-diagnostics.sh scripts/vps-cleanup.sh
-            if [[ "${{ inputs.action }}" == "diagnose" || "${{ inputs.action }}" == "both" ]]; then
+            chmod +x scripts/vps-diagnostics.sh scripts/vps-cleanup.sh scripts/vps-recover.sh
+            if [[ "${{ inputs.action }}" == "recover" ]]; then
+              bash scripts/vps-recover.sh
+            elif [[ "${{ inputs.action }}" == "diagnose" || "${{ inputs.action }}" == "both" ]]; then
               bash scripts/vps-diagnostics.sh
             fi
             if [[ "${{ inputs.action }}" == "cleanup" || "${{ inputs.action }}" == "both" ]]; then
