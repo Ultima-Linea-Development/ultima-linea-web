@@ -25,6 +25,9 @@ fi
 echo ">> Logging in to GHCR..."
 echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "${GHCR_USERNAME:?}" --password-stdin
 
+echo ">> Pruning unused Docker build cache..."
+docker builder prune -af 2>/dev/null || true
+
 echo ">> Pulling image ${FRONT_IMAGE}..."
 docker pull "$FRONT_IMAGE"
 

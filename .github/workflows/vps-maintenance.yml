@@ -1,0 +1,58 @@
+name: VPS maintenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Acción"
+        required: true
+        default: both
+        type: choice
+        options:
+          - diagnose
+          - cleanup
+          - both
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        shell: bash
+        run: |
+          printf '%s\n' "$VPS_SSH_KEY" > "$SSH_KEY_PATH"
+          chmod 600 "$SSH_KEY_PATH"
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KEY_PATH: ${{ runner.temp }}/deploy_key
+
+      - name: Run on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_PORT }}
+          key_path: ${{ runner.temp }}/deploy_key
+          timeout: 60s
+          command_timeout: 10m
+          script: |
+            cd /srv/ultima-linea-front
+            git fetch origin main
+            git checkout main
+            git pull origin main
+            chmod +x scripts/vps-diagnostics.sh scripts/vps-cleanup.sh
+            if [[ "${{ inputs.action }}" == "diagnose" || "${{ inputs.action }}" == "both" ]]; then
+              bash scripts/vps-diagnostics.sh
+            fi
+            if [[ "${{ inputs.action }}" == "cleanup" || "${{ inputs.action }}" == "both" ]]; then
+              bash scripts/vps-cleanup.sh
+            fi
+
+      - name: Remove SSH key
+        if: always()
+        shell: bash
+        run: rm -f "${{ runner.temp }}/deploy_key"
