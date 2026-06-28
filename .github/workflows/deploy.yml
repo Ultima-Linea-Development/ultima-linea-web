@@ -23,7 +23,7 @@ jobs:
           SSH_KEY_PATH: ${{ runner.temp }}/deploy_key
 
       - name: Deploy via SSH
-        uses: Wandalen/wretry.action@v3.5.0
+        uses: appleboy/ssh-action@v1.2.0
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           MONGODB_DATABASE: ${{ secrets.MONGODB_DATABASE }}
@@ -34,24 +34,20 @@ jobs:
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         with:
-          attempt_limit: 3
-          attempt_delay: 45000
-          action: appleboy/ssh-action@v1.2.0
-          with: |
-            host: ${{ secrets.VPS_HOST }}
-            username: ${{ secrets.VPS_USER }}
-            port: ${{ secrets.VPS_PORT }}
-            key_path: ${{ runner.temp }}/deploy_key
-            timeout: 120s
-            script_stop: true
-            command_timeout: 30m
-            envs: MONGODB_URI,MONGODB_DATABASE,JWT_SECRET,NEXT_PUBLIC_SITE_URL,NODE_ENV,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET
-            script: |
-              cd /srv/ultima-linea-front
-              git fetch origin main
-              git checkout main
-              git pull origin main
-              bash scripts/deploy.sh
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_PORT }}
+          key_path: ${{ runner.temp }}/deploy_key
+          timeout: 120s
+          script_stop: true
+          command_timeout: 30m
+          envs: MONGODB_URI,MONGODB_DATABASE,JWT_SECRET,NEXT_PUBLIC_SITE_URL,NODE_ENV,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET
+          script: |
+            cd /srv/ultima-linea-front
+            git fetch origin main
+            git checkout main
+            git pull origin main
+            bash scripts/deploy.sh
 
       - name: Remove SSH key
         if: always()
