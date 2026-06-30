@@ -29,6 +29,7 @@ import {
   MdOutlineInfo,
   MdOutlineHistory,
   MdOutlineUndo,
+  MdOutlinePerson,
 } from "react-icons/md";
 import { ComponentProps } from "react";
 
@@ -62,6 +63,7 @@ export const Icons = {
   info: MdOutlineInfo,
   history: MdOutlineHistory,
   rollback: MdOutlineUndo,
+  profile: MdOutlinePerson,
 } as const;
 
 export type IconName = keyof typeof Icons;

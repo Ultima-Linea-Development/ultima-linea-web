@@ -21,10 +21,10 @@ export default function AdminSectionLinks() {
       className={cn(
         "w-full",
         ADMIN_TABLE_OUTER_BORDER_CLASS,
-        "lg:mx-auto lg:max-w-2xl lg:border-0"
+        " lg:max-w-3xl lg:border-0"
       )}
     >
-      <nav className="grid w-full grid-cols-2 gap-px bg-gray-200 lg:gap-3 lg:bg-transparent">
+      <nav className="grid w-full grid-cols-2 gap-px bg-gray-200 lg:grid-cols-3 lg:gap-3 lg:bg-transparent">
         {navItems.map((item, index) => (
           <Link
             key={item.href}
