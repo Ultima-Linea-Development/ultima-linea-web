@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Container from "@/components/layout/Container";
 import NavBar from "@/components/layout/NavBar";
 import NavLinks from "@/components/layout/NavLinks";
@@ -13,8 +14,15 @@ import Nav from "@/components/ui/Nav";
 // import { Button } from "@/components/ui/button";
 // import Link from "next/link";
 import Box from "@/components/layout/Box";
+import { getToken } from "@/lib/auth";
 
 export default function Header() {
+  const [hasAuthToken, setHasAuthToken] = useState(false);
+
+  useEffect(() => {
+    setHasAuthToken(Boolean(getToken()));
+  }, []);
+
   return (
     <Nav position="sticky" border="bottom" background="white" uppercase={true}>
       <Container className="py-4">
@@ -26,6 +34,7 @@ export default function Header() {
             <NavLink href="/contact">
               Contacto
             </NavLink>
+            {hasAuthToken && <NavLink href="/admin">Admin</NavLink>}
           </NavLinks>
           <Box display="flex" align="center" gap="4">
             <div className="hidden md:block">
@@ -46,6 +55,11 @@ export default function Header() {
                 <NavLink href="/contact" mobile>
                   Contacto
                 </NavLink>
+                {hasAuthToken && (
+                  <NavLink href="/admin" mobile>
+                    Admin
+                  </NavLink>
+                )}
               </NavLinks>
             </MobileMenu>
           </Box>
