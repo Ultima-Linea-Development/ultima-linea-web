@@ -69,6 +69,7 @@ type AdminProductEditFormProps = {
   isSubmitting?: boolean;
   error?: string;
   getToken: () => string | null;
+  focusReservation?: boolean;
 };
 
 export default function AdminProductEditForm({
@@ -78,6 +79,7 @@ export default function AdminProductEditForm({
   isSubmitting = false,
   error = "",
   getToken,
+  focusReservation = false,
 }: AdminProductEditFormProps) {
   const initialShirtType = normalizeShirtType(product.type) ?? "";
   const initialProductType = extractProductTypeFromName(product.name) ?? DEFAULT_PRODUCT_TYPE;
@@ -209,7 +211,7 @@ export default function AdminProductEditForm({
     setSizeRows(productToRows(product));
     setInventoryError("");
     setReservationError("");
-    setReserveProduct(productHasCatalogReservations(product));
+    setReserveProduct(focusReservation || productHasCatalogReservations(product));
     setReservationRows(reservationRowsFromProduct(product, currentUserId));
     setFieldError("");
     setShirtType(shirtTypeValue);
@@ -218,7 +220,21 @@ export default function AdminProductEditForm({
     setNewFiles([]);
     setImageError("");
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [product, productOptions, currentUserId]);
+  }, [product, productOptions, currentUserId, focusReservation]);
+
+  useEffect(() => {
+    if (!focusReservation) return;
+
+    setReserveProduct(true);
+    const frame = requestAnimationFrame(() => {
+      document.getElementById("edit-reservation-section")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [focusReservation, product.id]);
 
   const removeCurrentImage = (index: number) => {
     setCurrentImageUrls((prev) => prev.filter((_, i) => i !== index));
@@ -449,7 +465,7 @@ export default function AdminProductEditForm({
           />
         </Div>
 
-        <Div spacing="md">
+        <Div spacing="md" id="edit-reservation-section">
           <AdminProductReservationFields
             idPrefix="edit-reservation"
             reserveProduct={reserveProduct}

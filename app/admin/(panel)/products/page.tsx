@@ -91,7 +91,13 @@ export default function AdminProductsPage() {
           onSuggestionSelect={(product) => catalog.applySearchFromQuery(product.name)}
           suggestions={catalog.searchInput.trim() ? catalog.searchSuggestions : []}
           getSuggestionKey={(product) => product.id}
-          renderSuggestion={(product) => <AdminProductSearchSuggestion product={product} />}
+          renderSuggestion={(product) => (
+            <AdminProductSearchSuggestion
+              product={product}
+              assignableUsers={catalog.assignableUsers}
+              externalSellers={catalog.externalSellers}
+            />
+          )}
           emptyMessage="No hay productos"
           listboxId="catalog-product-listbox"
         />
@@ -196,7 +202,7 @@ export default function AdminProductsPage() {
       />
 
       {edit.editingProductId && (
-        <Modal open={!!edit.editingProductId} onClose={edit.handleCancelEdit} title="Editar producto">
+        <Modal open={!!edit.editingProductId} onClose={edit.handleCancelEdit} title={edit.focusReservation ? "Reservar producto" : "Editar producto"}>
           {edit.isLoadingProduct ? (
             <Box display="flex" className="min-h-[200px] items-center justify-center">
               <Spinner fullscreen={false} />
@@ -209,6 +215,7 @@ export default function AdminProductsPage() {
               isSubmitting={edit.isEditSubmitting}
               error={edit.editError}
               getToken={getToken}
+              focusReservation={edit.focusReservation}
             />
           ) : edit.editError ? (
             <InlineAlert variant="destructive">
@@ -236,10 +243,13 @@ export default function AdminProductsPage() {
           totalPages={catalog.totalPages}
           onPageChange={catalog.setPage}
           onEdit={edit.handleEdit}
+          onReserve={edit.handleReserve}
           onDeactivate={catalog.handleDeactivate}
           onReactivate={catalog.handleReactivate}
           onDelete={handleDelete}
           canDeleteProduct={catalog.canDeleteProduct}
+          assignableUsers={catalog.assignableUsers}
+          externalSellers={catalog.externalSellers}
           selectedIds={catalog.selectedIds}
           onSelectionChange={canSelectProducts ? catalog.setSelectedIds : undefined}
           sizeFilter={catalog.sizeFilter}

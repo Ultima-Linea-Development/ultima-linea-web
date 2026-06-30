@@ -17,7 +17,7 @@ import {
   ADMIN_TABLE_TH_CLASS,
   adminTableRowClassName,
 } from "@/components/admin/AdminTable";
-import type { Product } from "@/lib/api";
+import type { ExternalSeller, Product, SaleAssignableUser } from "@/lib/api";
 import { formatPrice, generateSlug, cn } from "@/lib/utils";
 import AdminTableProductName from "@/components/admin/AdminTableProductName";
 import AdminProductReservationBadge from "@/components/admin/AdminProductReservationBadge";
@@ -27,6 +27,7 @@ import AdminTableMobileActionsMenu, {
   type AdminTableMobileAction,
 } from "@/components/admin/AdminTableMobileActionsMenu";
 import { sortSizeLabels } from "@/lib/product-inventory";
+import { isProductReserved } from "@/lib/product-reservation";
 
 const PER_PAGE = 10;
 
@@ -38,6 +39,7 @@ type AdminProductsTableProps = {
   totalPages: number;
   onPageChange: (page: number) => void;
   onEdit?: (product: Product) => void;
+  onReserve?: (product: Product) => void;
   onDeactivate?: (product: Product) => void;
   onReactivate?: (product: Product) => void;
   onDelete?: (product: Product) => void;
@@ -48,6 +50,8 @@ type AdminProductsTableProps = {
   sizeFilter?: string;
   sizeOptions?: string[];
   onSizeFilterChange?: (value: string) => void;
+  assignableUsers?: SaleAssignableUser[];
+  externalSellers?: ExternalSeller[];
 };
 
 export default function AdminProductsTable({
@@ -58,6 +62,7 @@ export default function AdminProductsTable({
   totalPages,
   onPageChange,
   onEdit,
+  onReserve,
   onDeactivate,
   onReactivate,
   onDelete,
@@ -68,6 +73,8 @@ export default function AdminProductsTable({
   sizeFilter = "",
   sizeOptions = [],
   onSizeFilterChange,
+  assignableUsers = [],
+  externalSellers = [],
 }: AdminProductsTableProps) {
   const cellClass = ADMIN_TABLE_CELL_CLASS;
   const thClass = ADMIN_TABLE_TH_CLASS;
@@ -102,6 +109,16 @@ export default function AdminProductsTable({
     const el = selectAllRef.current;
     if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected;
   }, [someVisibleSelected, allVisibleSelected]);
+
+  const renderReservationBadge = (product: Product) =>
+    isProductReserved(product) ? (
+      <AdminProductReservationBadge
+        product={product}
+        size="sm"
+        assignableUsers={assignableUsers}
+        externalSellers={externalSellers}
+      />
+    ) : null;
 
   const colSpan = onSelectionChange ? 6 : 5;
 
@@ -151,6 +168,15 @@ export default function AdminProductsTable({
         label: "Editar",
         icon: "edit",
         onClick: () => onEdit(product),
+      });
+    }
+
+    if (onReserve) {
+      actions.push({
+        id: "reserve",
+        label: isProductReserved(product) ? "Editar reserva" : "Reservar",
+        icon: "commissions",
+        onClick: () => onReserve(product),
       });
     }
 
@@ -256,7 +282,7 @@ export default function AdminProductsTable({
                 stripeIndex={index}
               >
                 <Box display="flex" justify="between" align="start" gap="2" className="w-full min-w-0">
-                  <Box display="flex" align="start" gap="2" className="min-w-0">
+                  <Box display="flex" align="start" gap="2" className="min-w-0 flex-1">
                     {onSelectionChange && (
                       <input
                         type="checkbox"
@@ -273,8 +299,8 @@ export default function AdminProductsTable({
                       imageClassName="h-9 w-9"
                       className="min-w-0 items-start gap-2"
                       inactive={!p.is_active}
+                      titlePrefix={renderReservationBadge(p)}
                     />
-                    <AdminProductReservationBadge product={p} size="sm" />
                   </Box>
                   <AdminTableMobileActionsMenu actions={getRowActions(p)} />
                 </Box>
@@ -315,15 +341,13 @@ export default function AdminProductsTable({
                     </td>
                   )}
                   <td className={cellClass}>
-                    <Box display="flex" direction="col" gap="1" className="min-w-0">
-                      <AdminTableProductName
-                        name={p.name}
-                        imageUrl={p.image_urls?.[0]}
-                        href={`/product/${(p.slug || generateSlug(p.name))}-${p.id}`}
-                        inactive={!p.is_active}
-                      />
-                      <AdminProductReservationBadge product={p} size="sm" />
-                    </Box>
+                    <AdminTableProductName
+                      name={p.name}
+                      imageUrl={p.image_urls?.[0]}
+                      href={`/product/${(p.slug || generateSlug(p.name))}-${p.id}`}
+                      inactive={!p.is_active}
+                      titlePrefix={renderReservationBadge(p)}
+                    />
                   </td>
                   <td className={cellClass}>
                     <Typography variant="body2">{p.team ?? "—"}</Typography>

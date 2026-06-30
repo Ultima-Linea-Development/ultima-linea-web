@@ -85,7 +85,9 @@ export function getProductReservationLabel(
   }
 
   if (reservation.reserved_for_user_id) {
-    return getAssignableUserLabel(assignableUsers, reservation.reserved_for_user_id);
+    const label = getAssignableUserLabel(assignableUsers, reservation.reserved_for_user_id);
+    if (label !== "—") return label;
+    return reservation.reserved_for_user_id;
   }
 
   return "Vendedor desconocido";
@@ -107,11 +109,13 @@ export function getProductReservationSummary(
 
     const sizesLabel = entries.map(({ size }) => size).join(", ");
     const sellerLabel =
-      labels.size === 1 ? [...labels][0] : entries
-        .map(({ size, reservation }) =>
-          `${size}: ${getProductReservationLabel(reservation, assignableUsers, externalSellers)}`
-        )
-        .join(" · ");
+      labels.size === 1
+        ? [...labels][0]
+        : entries
+            .map(({ size, reservation }) =>
+              `${size}: ${getProductReservationLabel(reservation, assignableUsers, externalSellers)}`
+            )
+            .join(" · ");
 
     return `${sizesLabel} · ${sellerLabel}`;
   }
@@ -119,6 +123,45 @@ export function getProductReservationSummary(
   if (!hasLegacyProductReservation(product)) return null;
 
   return getProductReservationLabel(product, assignableUsers, externalSellers);
+}
+
+export function getProductReservationBadgeText(
+  product: Pick<Product, "reserved_by_sizes" | "reserved_for_user_id" | "reserved_for_external_seller_id" | "reserved_for_external_seller_name">,
+  assignableUsers: SaleAssignableUser[] = [],
+  externalSellers: ExternalSeller[] = []
+): { label: string; title: string } | null {
+  const entries = getProductReservedSizeEntries(product);
+
+  if (entries.length === 0) {
+    if (!hasLegacyProductReservation(product)) return null;
+
+    const sellerLabel = getProductReservationLabel(product, assignableUsers, externalSellers);
+    return {
+      label: `Reservado para ${sellerLabel}`,
+      title: `Reservado para ${sellerLabel}`,
+    };
+  }
+
+  const sizesLabel = entries.map(({ size }) => size).join(", ");
+  const sellerLabels = entries.map(({ reservation }) =>
+    getProductReservationLabel(reservation, assignableUsers, externalSellers)
+  );
+  const uniqueSellerLabels = new Set(sellerLabels);
+
+  if (uniqueSellerLabels.size === 1) {
+    const sellerLabel = sellerLabels[0];
+    const label = `Reservado para ${sellerLabel} · ${sizesLabel}`;
+    return { label, title: label };
+  }
+
+  const detail = entries
+    .map(({ size, reservation }) =>
+      `${size}: ${getProductReservationLabel(reservation, assignableUsers, externalSellers)}`
+    )
+    .join(" · ");
+  const label = `Reservado · ${detail}`;
+
+  return { label, title: label };
 }
 
 export function getLineItemReservationLabel(

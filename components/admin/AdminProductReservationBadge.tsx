@@ -3,7 +3,7 @@
 import Typography from "@/components/ui/Typography";
 import type { ExternalSeller, Product, SaleAssignableUser } from "@/lib/api";
 import {
-  getProductReservationSummary,
+  getProductReservationBadgeText,
   isProductReserved,
 } from "@/lib/product-reservation";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,8 @@ export default function AdminProductReservationBadge({
 }: AdminProductReservationBadgeProps) {
   if (!isProductReserved(product)) return null;
 
-  const summary = getProductReservationSummary(product, assignableUsers, externalSellers);
+  const badgeText = getProductReservationBadgeText(product, assignableUsers, externalSellers);
+  if (!badgeText) return null;
 
   return (
     <span
@@ -45,10 +46,10 @@ export default function AdminProductReservationBadge({
         SIZE_CLASSES[size],
         className
       )}
-      title={summary ? `Reservado · ${summary}` : "Reservado"}
+      title={badgeText.title}
     >
       <Typography variant="caption" as="span" className="truncate">
-        Reservado{summary ? ` · ${summary}` : ""}
+        {badgeText.label}
       </Typography>
     </span>
   );

@@ -5,6 +5,7 @@ import Box from "@/components/layout/Box";
 import Typography from "@/components/ui/Typography";
 import AdminTextLink from "@/components/admin/AdminTextLink";
 import { cn } from "@/lib/utils";
+import { type ReactNode } from "react";
 
 type AdminTableProductNameProps = {
   name: string;
@@ -14,6 +15,7 @@ type AdminTableProductNameProps = {
   imageClassName?: string;
   className?: string;
   inactive?: boolean;
+  titlePrefix?: ReactNode;
 };
 
 export default function AdminTableProductName({
@@ -24,6 +26,7 @@ export default function AdminTableProductName({
   imageClassName = "h-10 w-10 sm:h-12 sm:w-12",
   className,
   inactive = false,
+  titlePrefix,
 }: AdminTableProductNameProps) {
   const content = (
     <Box display="flex" className={cn("items-center gap-2 sm:gap-3 min-w-0", className)}>
@@ -46,11 +49,14 @@ export default function AdminTableProductName({
       ) : (
         <span className="text-muted-foreground text-xs shrink-0 w-10 sm:w-12 text-center">—</span>
       )}
-      <span className="min-w-0 line-clamp-2">
-        <Typography variant="body2" as="span">
-          {name}
-        </Typography>
-      </span>
+      <Box display="flex" direction="col" gap="1" className="min-w-0">
+        {titlePrefix}
+        <span className="min-w-0 line-clamp-2">
+          <Typography variant="body2" as="span">
+            {name}
+          </Typography>
+        </span>
+      </Box>
     </Box>
   );
 

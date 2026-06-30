@@ -7,7 +7,10 @@ import { canDeleteOwnedResource } from "@/lib/roles";
 import {
   productsApi,
   adminProductsApi,
+  adminSalesApi,
+  type ExternalSeller,
   type Product,
+  type SaleAssignableUser,
   type UpdateProductRequest,
 } from "@/lib/api";
 import { filterProductsByQuery } from "@/lib/admin-product-search";
@@ -33,6 +36,8 @@ export function useAdminProductsCatalog() {
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
   const [bulkConfirmIds, setBulkConfirmIds] = useState<string[] | null>(null);
   const [bulkError, setBulkError] = useState("");
+  const [assignableUsers, setAssignableUsers] = useState<SaleAssignableUser[]>([]);
+  const [externalSellers, setExternalSellers] = useState<ExternalSeller[]>([]);
 
   const {
     deleteToast,
@@ -160,6 +165,19 @@ export function useAdminProductsCatalog() {
       if (response.data) {
         setSizeOptions(response.data.sizes);
       }
+    });
+  }, []);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    void Promise.all([
+      adminSalesApi.getAssignableUsers(token),
+      adminSalesApi.getExternalSellers(token),
+    ]).then(([usersResponse, sellersResponse]) => {
+      setAssignableUsers(usersResponse.data?.users ?? []);
+      setExternalSellers(sellersResponse.data?.sellers ?? []);
     });
   }, []);
 
@@ -400,6 +418,8 @@ export function useAdminProductsCatalog() {
     showInactiveProducts,
     showTodoProducts,
     sizeOptions,
+    assignableUsers,
+    externalSellers,
     searchInput,
     setSearchInput,
     searchSuggestions,
@@ -430,10 +450,23 @@ export function useAdminProductEdit(refreshCatalog: () => Promise<void>, flushPe
   const [editError, setEditError] = useState("");
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
   const [isLoadingProduct, setIsLoadingProduct] = useState(false);
+  const [focusReservation, setFocusReservation] = useState(false);
 
   const handleEdit = useCallback(
     (product: Product) => {
       void flushPendingDelete();
+      setFocusReservation(false);
+      setEditingProductId(product.id);
+      setEditingProduct(null);
+      setEditError("");
+    },
+    [flushPendingDelete]
+  );
+
+  const handleReserve = useCallback(
+    (product: Product) => {
+      void flushPendingDelete();
+      setFocusReservation(true);
       setEditingProductId(product.id);
       setEditingProduct(null);
       setEditError("");
@@ -487,6 +520,7 @@ export function useAdminProductEdit(refreshCatalog: () => Promise<void>, flushPe
       }
       setEditingProductId(null);
       setEditingProduct(null);
+      setFocusReservation(false);
       await refreshCatalog();
       setIsEditSubmitting(false);
     },
@@ -496,6 +530,7 @@ export function useAdminProductEdit(refreshCatalog: () => Promise<void>, flushPe
   const handleCancelEdit = useCallback(() => {
     setEditingProductId(null);
     setEditingProduct(null);
+    setFocusReservation(false);
     setEditError("");
   }, []);
 
@@ -505,7 +540,9 @@ export function useAdminProductEdit(refreshCatalog: () => Promise<void>, flushPe
     editError,
     isEditSubmitting,
     isLoadingProduct,
+    focusReservation,
     handleEdit,
+    handleReserve,
     handleSaveEdit,
     handleCancelEdit,
   };
