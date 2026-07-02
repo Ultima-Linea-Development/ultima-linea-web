@@ -633,6 +633,11 @@ export type AdminUser = AdminProfile & {
   must_change_password?: boolean;
 };
 
+export type RequestPasswordChangeResponse = {
+  user: AdminUser;
+  temporary_password: string;
+};
+
 export type PaginatedUsersResponse = {
   users: AdminUser[];
   page: number;
@@ -893,7 +898,11 @@ export const adminUsersApi = {
     api.put<AdminUser>(`/admin/users/${id}`, user, token),
 
   requestPasswordChange: (id: string, token: string) =>
-    api.post<AdminUser>(`/admin/users/${id}/request-password-change`, {}, token),
+    api.post<RequestPasswordChangeResponse>(
+      `/admin/users/${id}/request-password-change`,
+      {},
+      token
+    ),
 
   delete: (id: string, token: string) =>
     api.delete<{ message: string }>(`/admin/users/${id}`, token),

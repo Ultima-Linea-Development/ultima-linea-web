@@ -1,5 +1,7 @@
 import bcrypt from "bcryptjs";
 
+export const RESTORED_TEMPORARY_PASSWORD = "123456";
+
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
 }

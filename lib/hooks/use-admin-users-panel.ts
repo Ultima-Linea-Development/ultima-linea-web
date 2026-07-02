@@ -209,13 +209,15 @@ export function useAdminUsersPanel() {
 
     const response = await adminUsersApi.requestPasswordChange(editingUser.id, token);
     if (response.error || !response.data) {
-      setPasswordChangeError(response.error || "No se pudo solicitar el cambio de contraseña.");
+      setPasswordChangeError(response.error || "No se pudo restaurar la contraseña.");
       setIsRequestingPasswordChange(false);
       return false;
     }
 
-    setEditingUser(response.data);
-    setSuccess("Se solicitó el cambio de contraseña. El usuario deberá definir una nueva al ingresar.");
+    setEditingUser(response.data.user);
+    setSuccess(
+      `Contraseña restaurada. El usuario puede ingresar con ${response.data.temporary_password} y deberá definir una nueva al entrar.`
+    );
     await loadUsers();
     setIsRequestingPasswordChange(false);
     return true;

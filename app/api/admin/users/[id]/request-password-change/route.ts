@@ -3,6 +3,10 @@ import { ensureIndexes, getUsersCollection } from "@/lib/server/db";
 import { UserDocument, userFromDoc } from "@/lib/server/models";
 import { getPrimaryAdminId } from "@/lib/server/users";
 import {
+  hashPassword,
+  RESTORED_TEMPORARY_PASSWORD,
+} from "@/lib/server/password";
+import {
   isNextResponse,
   jsonError,
   requireAdmin,
@@ -34,15 +38,13 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       return jsonError("User not found", 404);
     }
 
-    if (current.must_change_password) {
-      return jsonError("El usuario ya debe cambiar su contraseña", 400);
-    }
-
+    const hashedPassword = await hashPassword(RESTORED_TEMPORARY_PASSWORD);
     const now = new Date();
     const result = await collection.updateOne(
       { _id: id },
       {
         $set: {
+          password: hashedPassword,
           must_change_password: true,
           updated_at: now,
         },
@@ -59,7 +61,10 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     }
 
     const primaryAdminId = await getPrimaryAdminId();
-    return NextResponse.json(toSafeUser(updated, primaryAdminId));
+    return NextResponse.json({
+      user: toSafeUser(updated, primaryAdminId),
+      temporary_password: RESTORED_TEMPORARY_PASSWORD,
+    });
   } catch {
     return jsonError("Failed to request password change", 500);
   }

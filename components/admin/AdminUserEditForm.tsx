@@ -79,7 +79,7 @@ export default function AdminUserEditForm({
   };
 
   const handleRequestPasswordChange = async () => {
-    if (!onRequestPasswordChange || mustChangePassword) return;
+    if (!onRequestPasswordChange) return;
 
     const requested = await onRequestPasswordChange();
     if (requested) {
@@ -162,20 +162,18 @@ export default function AdminUserEditForm({
         <FormField label="Contraseña">
           {mustChangePassword ? (
             <Typography variant="body2" className="text-muted-foreground">
-              El usuario deberá definir una nueva contraseña al iniciar sesión.
+              Pendiente de cambio. El usuario debe ingresar con la contraseña temporal que le
+              indicaste y definir una nueva.
             </Typography>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleRequestPasswordChange}
-              disabled={isBusy || !onRequestPasswordChange}
-            >
-              {isRequestingPasswordChange
-                ? "Solicitando..."
-                : "Solicitar cambio de contraseña"}
-            </Button>
-          )}
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleRequestPasswordChange}
+            disabled={isBusy || !onRequestPasswordChange}
+          >
+            {isRequestingPasswordChange ? "Restaurando..." : "Restaurar contraseña"}
+          </Button>
           {passwordChangeError ? (
             <InlineAlert variant="destructive">
               <Typography variant="body2" color="destructive">
