@@ -9,6 +9,7 @@ import {
 } from "@/lib/server/auth-middleware";
 import { buildAdminCommissionsSearchTextMatch } from "@/lib/admin-commissions-search";
 import { normalizeCommissionForResponse } from "@/lib/server/commissions";
+import { findStaffUserIdsMatchingQuery } from "@/lib/server/staff-user-search";
 
 const MAX_SEARCH_RESULTS = 500;
 
@@ -25,7 +26,8 @@ export async function GET(request: NextRequest) {
     }
 
     const collection = await getCommissionsCollection<CommissionDocument>();
-    const searchFilter = buildAdminCommissionsSearchTextMatch(q);
+    const sellerUserIds = await findStaffUserIdsMatchingQuery(q);
+    const searchFilter = buildAdminCommissionsSearchTextMatch(q, sellerUserIds);
     const total = await collection.countDocuments(searchFilter);
     const docs = await collection
       .find(searchFilter)

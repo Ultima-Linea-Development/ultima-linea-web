@@ -9,6 +9,7 @@ import {
   requireAuth,
 } from "@/lib/server/auth-middleware";
 import { buildAdminSalesSearchTextMatch } from "@/lib/admin-sales-search";
+import { findStaffUserIdsMatchingQuery } from "@/lib/server/staff-user-search";
 
 const MAX_SEARCH_RESULTS = 500;
 
@@ -25,7 +26,8 @@ export async function GET(request: NextRequest) {
     }
 
     const collection = await getSalesCollection<SaleDocument>();
-    const searchFilter = buildAdminSalesSearchTextMatch(q);
+    const sellerUserIds = await findStaffUserIdsMatchingQuery(q);
+    const searchFilter = buildAdminSalesSearchTextMatch(q, sellerUserIds);
     const total = await collection.countDocuments(searchFilter);
     const docs = await collection
       .find(searchFilter)

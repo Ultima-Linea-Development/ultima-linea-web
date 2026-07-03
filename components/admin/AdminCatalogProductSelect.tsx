@@ -7,8 +7,7 @@ import FormField from "@/components/ui/FormField";
 import Typography from "@/components/ui/Typography";
 import AdminSearchInput from "@/components/admin/AdminSearchInput";
 import AdminProductSearchSuggestion from "@/components/admin/AdminProductSearchSuggestion";
-import AdminTextLink from "@/components/admin/AdminTextLink";
-import Icon from "@/components/ui/Icons";
+import AdminProductSourceSwitch from "@/components/admin/AdminProductSourceSwitch";
 import type { Product } from "@/lib/api";
 import { filterProductsByQuery } from "@/lib/admin-product-search";
 
@@ -54,7 +53,7 @@ export default function AdminCatalogProductSelect({
 
   if (isCustomProduct) {
     return (
-      <FormField htmlFor={`${id}-custom`} label={label} required={required}>
+      <FormField htmlFor={`${id}-custom`} label={label} required={required} className="w-full min-w-0">
         <Input
           id={`${id}-custom`}
           type="text"
@@ -64,25 +63,19 @@ export default function AdminCatalogProductSelect({
           disabled={disabled}
           required={required}
         />
-        <Div mt={2}>
-          <AdminTextLink
-            tone="muted"
-            className="inline-flex items-center gap-1.5"
-            onClick={() => {
-              if (disabled) return;
-              onCustomChange(false);
-            }}
-          >
-            <Icon name="catalog" className="size-4 shrink-0" />
-            Elegir del catálogo
-          </AdminTextLink>
+        <Div mt={3}>
+          <AdminProductSourceSwitch
+            mode="custom"
+            disabled={disabled}
+            onSwitch={() => onCustomChange(false)}
+          />
         </Div>
       </FormField>
     );
   }
 
   return (
-    <FormField label={label} required={required}>
+    <FormField label={label} required={required} className="w-full min-w-0">
       <AdminSearchInput
         id={id}
         value={searchInput}
@@ -109,18 +102,12 @@ export default function AdminCatalogProductSelect({
           </Typography>
         }
       />
-      <Div mt={2}>
-        <AdminTextLink
-          tone="muted"
-          className="inline-flex items-center gap-1.5"
-          onClick={() => {
-            if (disabled) return;
-            onCustomChange(true);
-          }}
-        >
-          <Icon name="add" className="size-4 shrink-0" />
-          Agregar producto externo
-        </AdminTextLink>
+      <Div mt={3}>
+        <AdminProductSourceSwitch
+          mode="catalog"
+          disabled={disabled}
+          onSwitch={() => onCustomChange(true)}
+        />
       </Div>
     </FormField>
   );

@@ -286,7 +286,7 @@ export default function AdminSaleEditForm({
       sellerValue.externalSellerId !== initialSeller.externalSellerId ||
       sellerValue.externalSellerName.trim() !== initialSeller.externalSellerName.trim();
 
-    if (sellerChanged) {
+    if (sellerChanged && canAssignUser) {
       Object.assign(payload, saleSellerValueToPayload(sellerValue, canAssignUser));
       hasChanges = true;
     }
@@ -405,6 +405,7 @@ export default function AdminSaleEditForm({
         onSaleDateChange={setSaleDate}
         saleDateId="edit-sale-date"
         disabled={isSubmitting}
+        readOnlySeller={!canAssignUser}
       />
 
       <FormField htmlFor="edit-sale-transfer-alias" label="Alias de quien transfirió">

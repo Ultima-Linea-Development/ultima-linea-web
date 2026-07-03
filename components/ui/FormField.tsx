@@ -29,7 +29,12 @@ export default function FormField({
 }: FormFieldProps) {
   if (htmlFor) {
     return (
-      <Label htmlFor={htmlFor} display="block" spacing="sm" className={className}>
+      <Label
+        htmlFor={htmlFor}
+        display="block"
+        spacing="sm"
+        className={cn("w-full min-w-0", className)}
+      >
         <FieldLabel label={label} required={required} />
         {children}
       </Label>
@@ -37,7 +42,7 @@ export default function FormField({
   }
 
   return (
-    <div className={cn("block space-y-1", className)}>
+    <div className={cn("block w-full min-w-0 space-y-1", className)}>
       <FieldLabel label={label} required={required} />
       {children}
     </div>

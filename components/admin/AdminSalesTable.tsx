@@ -51,6 +51,7 @@ type AdminSalesTableProps = {
   onViewDetails?: (sale: Sale) => void;
   onEdit?: (sale: Sale) => void;
   onDelete?: (sale: Sale) => void;
+  canEditSale?: (sale: Sale) => boolean;
   canDeleteSale?: (sale: Sale) => boolean;
   selectedIds?: string[];
   onSelectionChange?: (ids: string[]) => void;
@@ -101,6 +102,7 @@ export default function AdminSalesTable({
   onViewDetails,
   onEdit,
   onDelete,
+  canEditSale,
   canDeleteSale,
   selectedIds = [],
   onSelectionChange,
@@ -142,7 +144,7 @@ export default function AdminSalesTable({
       });
     }
 
-    if (onEdit) {
+    if (onEdit && (!canEditSale || canEditSale(sale))) {
       actions.push({
         id: "edit",
         label: "Editar",

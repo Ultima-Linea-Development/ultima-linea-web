@@ -30,7 +30,7 @@ type AdminTableSkeletonProps = {
 const DATA_COLUMNS: Record<AdminTableSkeletonVariant, number> = {
   sales: 5,
   users: 5,
-  products: 4,
+  products: 5,
 };
 
 const SHIMMER_TEXT = "block h-4 w-full rounded-sm";

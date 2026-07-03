@@ -1,7 +1,6 @@
 "use client";
 
 import Box from "@/components/layout/Box";
-import Div from "@/components/ui/Div";
 import FormField from "@/components/ui/FormField";
 import Input, { InputAdornment } from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
@@ -90,123 +89,113 @@ export default function AdminProductIdentityFields({
   onShirtTypeChange,
 }: AdminProductIdentityFieldsProps) {
   return (
-    <>
-      <Div spacing="md">
-        <FormField label={<AdminProductNameFieldLabel />} required>
-          <Box display="flex" gap="2" className="flex-wrap">
-            <Input
-              id={`${idPrefix}-name`}
-              type="text"
-              value={name}
-              onChange={(e) => onNameChange(e.target.value)}
-              required
-              placeholder="Camiseta Alternativa Arsenal 2025/2026 Versión Fan"
-              disabled={disabled}
-              endIcon={
-                isNameManuallyEdited ? (
-                  <InputAdornment
-                    aria-label="Regenerar nombre"
-                    title="Regenerar nombre"
-                    onClick={onRegenerateName}
-                    disabled={disabled}
-                  >
-                    <Icon name="rollback" className="size-4" aria-hidden />
-                  </InputAdornment>
-                ) : null
-              }
-            />
-          </Box>
+    <Box display="flex" direction="col" gap="4" align="stretch" className="w-full min-w-0">
+      <FormField
+        htmlFor={`${idPrefix}-name`}
+        label={<AdminProductNameFieldLabel />}
+        required
+        className="w-full min-w-0"
+      >
+        <Input
+          id={`${idPrefix}-name`}
+          type="text"
+          value={name}
+          onChange={(e) => onNameChange(e.target.value)}
+          required
+          placeholder="Camiseta Alternativa Arsenal 2025/2026 Versión Fan"
+          disabled={disabled}
+          endIcon={
+            isNameManuallyEdited ? (
+              <InputAdornment
+                aria-label="Regenerar nombre"
+                title="Regenerar nombre"
+                onClick={onRegenerateName}
+                disabled={disabled}
+              >
+                <Icon name="rollback" className="size-4" aria-hidden />
+              </InputAdornment>
+            ) : null
+          }
+        />
+      </FormField>
+
+      <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
+        <ProductOptionSelect
+          id={`${idPrefix}-product-type`}
+          label="Tipo de producto"
+          value={productType}
+          options={productTypeOptions}
+          isCustom={isCustomProductType}
+          onChange={onProductTypeChange}
+          onCustomChange={onCustomProductTypeChange}
+          customPlaceholder="Ingresá el tipo de producto"
+          disabled={disabled}
+          required
+        />
+        <ProductOptionSelect
+          id={`${idPrefix}-kit-type`}
+          label="Tipo de camiseta"
+          value={kitType}
+          options={kitTypeOptions}
+          isCustom={isCustomKitType}
+          onChange={onKitTypeChange}
+          onCustomChange={onCustomKitTypeChange}
+          customPlaceholder="Ingresá el tipo de camiseta"
+          disabled={disabled}
+        />
+        <FormField
+          htmlFor={`${idPrefix}-shirt-type`}
+          label="Versión"
+          className="w-full min-w-0"
+        >
+          <Select
+            id={`${idPrefix}-shirt-type`}
+            value={shirtType}
+            onChange={(e) => onShirtTypeChange(e.target.value as ProductVersionFieldValue)}
+            disabled={disabled}
+          >
+            <option value="">Sin versión</option>
+            {SHIRT_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
         </FormField>
-      </Div>
-
-      <Box display="flex" gap="4" className="flex-wrap">
-        <Div spacing="md" className="min-w-[180px] flex-1">
-          <ProductOptionSelect
-            id={`${idPrefix}-product-type`}
-            label="Tipo de producto"
-            value={productType}
-            options={productTypeOptions}
-            isCustom={isCustomProductType}
-            onChange={onProductTypeChange}
-            onCustomChange={onCustomProductTypeChange}
-            customPlaceholder="Ingresá el tipo de producto"
-            disabled={disabled}
-            required
-          />
-        </Div>
-        <Div spacing="md" className="min-w-[180px] flex-1">
-          <ProductOptionSelect
-            id={`${idPrefix}-kit-type`}
-            label="Tipo de camiseta"
-            value={kitType}
-            options={kitTypeOptions}
-            isCustom={isCustomKitType}
-            onChange={onKitTypeChange}
-            onCustomChange={onCustomKitTypeChange}
-            customPlaceholder="Ingresá el tipo de camiseta"
-            disabled={disabled}
-          />
-        </Div>
-        <Div spacing="md" className="min-w-[160px] flex-1">
-          <FormField htmlFor={`${idPrefix}-shirt-type`} label="Versión">
-            <Select
-              id={`${idPrefix}-shirt-type`}
-              value={shirtType}
-              onChange={(e) => onShirtTypeChange(e.target.value as ProductVersionFieldValue)}
-              disabled={disabled}
-            >
-              <option value="">Sin versión</option>
-              {SHIRT_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-        </Div>
-      </Box>
-
-      <Box display="flex" gap="4" className="flex-wrap">
-        <Div spacing="md" className="min-w-[200px] flex-1">
-          <ProductOptionSelect
-            id={`${idPrefix}-team`}
-            label="Equipo"
-            value={team}
-            options={teamOptions}
-            isCustom={isCustomTeam}
-            onChange={onTeamChange}
-            onCustomChange={onCustomTeamChange}
-            customPlaceholder="Ingresá el equipo"
-            disabled={disabled}
-          />
-        </Div>
-        <Div spacing="md" className="min-w-[200px] flex-1">
-          <ProductOptionSelect
-            id={`${idPrefix}-league`}
-            label="Liga"
-            value={league}
-            options={leagueOptions}
-            isCustom={isCustomLeague}
-            onChange={onLeagueChange}
-            onCustomChange={onCustomLeagueChange}
-            customPlaceholder="Ingresá la liga"
-            disabled={disabled}
-          />
-        </Div>
-        <Div spacing="md" className="min-w-[160px] flex-1">
-          <ProductOptionSelect
-            id={`${idPrefix}-season`}
-            label="Temporada"
-            value={season}
-            options={seasonOptions}
-            isCustom={isCustomSeason}
-            onChange={onSeasonChange}
-            onCustomChange={onCustomSeasonChange}
-            customPlaceholder="Ingresá la temporada"
-            disabled={disabled}
-          />
-        </Div>
-      </Box>
-    </>
+        <ProductOptionSelect
+          id={`${idPrefix}-team`}
+          label="Equipo"
+          value={team}
+          options={teamOptions}
+          isCustom={isCustomTeam}
+          onChange={onTeamChange}
+          onCustomChange={onCustomTeamChange}
+          customPlaceholder="Ingresá el equipo"
+          disabled={disabled}
+        />
+        <ProductOptionSelect
+          id={`${idPrefix}-league`}
+          label="Liga"
+          value={league}
+          options={leagueOptions}
+          isCustom={isCustomLeague}
+          onChange={onLeagueChange}
+          onCustomChange={onCustomLeagueChange}
+          customPlaceholder="Ingresá la liga"
+          disabled={disabled}
+        />
+        <ProductOptionSelect
+          id={`${idPrefix}-season`}
+          label="Temporada"
+          value={season}
+          options={seasonOptions}
+          isCustom={isCustomSeason}
+          onChange={onSeasonChange}
+          onCustomChange={onCustomSeasonChange}
+          customPlaceholder="Ingresá la temporada"
+          disabled={disabled}
+        />
+      </div>
+    </Box>
   );
 }

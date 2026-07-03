@@ -39,3 +39,11 @@ export function canDeleteOwnedResource(
   }
   return false;
 }
+
+export function canEditOwnedResource(
+  role: string | undefined | null,
+  userId: string | undefined | null,
+  createdBy?: string | null
+): boolean {
+  return canDeleteOwnedResource(role, userId, createdBy);
+}

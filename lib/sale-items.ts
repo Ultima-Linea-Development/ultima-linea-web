@@ -1,6 +1,7 @@
-import type { Sale, SaleLineItem } from "@/lib/api";
+import type { Sale, SaleAssignableUser, SaleLineItem } from "@/lib/api";
 import { sortSizeEntries, sortSizeLabels } from "@/lib/product-inventory";
 import { matchesNormalizedSearch } from "@/lib/search-normalization";
+import { getSaleSellerLabel } from "@/lib/sale-seller";
 
 type LegacySaleFields = {
   product_id?: string;
@@ -99,11 +100,20 @@ export function getSaleSizeQuantityEntries(sale: LegacySaleFields): [string, num
   return sortSizeEntries([...bySize.entries()]);
 }
 
-export function saleMatchesQuery(sale: Sale, query: string): boolean {
+export function saleMatchesQuery(
+  sale: Sale,
+  query: string,
+  assignableUsers: SaleAssignableUser[] = []
+): boolean {
   const normalized = normalizeSaleSearchQuery(query);
   if (!normalized.trim()) return false;
 
-  const saleValues = [sale.external_seller_name, sale.transfer_alias, sale.description];
+  const saleValues = [
+    sale.external_seller_name,
+    sale.transfer_alias,
+    sale.description,
+    getSaleSellerLabel(sale, assignableUsers),
+  ];
   if (matchesNormalizedSearch(saleValues, normalized)) return true;
 
   return getSaleLineItems(sale).some((item) =>

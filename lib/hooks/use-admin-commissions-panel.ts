@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { PER_PAGE } from "@/components/admin/AdminCommissionsTable";
 import { getToken, getUserFromToken, getCurrentUserId, isAdmin } from "@/lib/auth";
-import { canDeleteOwnedResource } from "@/lib/roles";
+import { canDeleteOwnedResource, canEditOwnedResource } from "@/lib/roles";
 import {
   adminCommissionsApi,
   adminOrdersApi,
@@ -77,6 +77,12 @@ export function useAdminCommissionsPanel() {
 
   const resetPage = useCallback(() => setPage(1), []);
 
+  const filterCommissionsCached = useCallback(
+    (items: Commission[], query: string, limit: number) =>
+      filterCommissionsByQuery(items, query, limit, assignableUsers),
+    [assignableUsers]
+  );
+
   const {
     searchInput,
     setSearchInput,
@@ -89,7 +95,7 @@ export function useAdminCommissionsPanel() {
     invalidateSearchCache,
   } = useAdminSearch<Commission>({
     searchApi: (token, query) => adminCommissionsApi.search(token, query),
-    filterCached: filterCommissionsByQuery,
+    filterCached: filterCommissionsCached,
   });
 
   const loadProducts = useCallback(async () => {
@@ -351,6 +357,12 @@ export function useAdminCommissionsPanel() {
     []
   );
 
+  const canEditCommission = useCallback(
+    (commission: Commission) =>
+      canEditOwnedResource(getUserFromToken()?.role, getCurrentUserId(), commission.created_by),
+    []
+  );
+
   const handleBulkDeleteConfirm = useCallback(async () => {
     if (!bulkConfirmIds?.length) return;
 
@@ -474,6 +486,7 @@ export function useAdminCommissionsPanel() {
     handleConfirmDelete,
     handleBulkDeleteConfirm,
     canDeleteCommission,
+    canEditCommission,
     selectedIds,
     setSelectedIds,
     bulkConfirmIds,

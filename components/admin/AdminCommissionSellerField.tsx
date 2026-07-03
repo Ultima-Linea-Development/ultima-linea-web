@@ -42,7 +42,6 @@ export default function AdminCommissionSellerField({
   }, [assignableUsers, canAssignUser, currentUserId]);
 
   const showInternalAssignee = value.sellerType === "internal" && internalSellerOptions.length > 0;
-  const isSelfOnlyAssignee = !canAssignUser && internalSellerOptions.length === 1;
   const showExternalPicker = value.sellerType === "external";
   const showNewExternalName =
     showExternalPicker &&
@@ -97,7 +96,7 @@ export default function AdminCommissionSellerField({
                     internalUserId: event.target.value,
                   })
                 }
-                disabled={disabled || isSelfOnlyAssignee}
+                disabled={disabled}
                 required
               >
                 {internalSellerOptions.map((user) => (

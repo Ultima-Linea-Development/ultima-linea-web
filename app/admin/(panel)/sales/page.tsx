@@ -12,9 +12,11 @@ import AdminSalesTable, { PER_PAGE } from "@/components/admin/AdminSalesTable";
 import { ADMIN_PAGE_PADDING_CLASS } from "@/components/admin/AdminTable";
 import AdminSearchInput from "@/components/admin/AdminSearchInput";
 import AdminSaleSearchSuggestion from "@/components/admin/AdminSaleSearchSuggestion";
+import AdminSaleSellerSearchSuggestion from "@/components/admin/AdminSaleSellerSearchSuggestion";
 import ConfirmDeleteModal from "@/components/admin/ConfirmDeleteModal";
 import AdminTableBulkFooter from "@/components/admin/AdminTableBulkFooter";
 import { getSalePrimaryProductName } from "@/lib/sale-items";
+import { formatAssignableUserLabel } from "@/lib/user-display";
 import { Button } from "@/components/ui/button";
 import { useAdminSalesPanel } from "@/lib/hooks/use-admin-sales-panel";
 import { cn } from "@/lib/utils";
@@ -37,12 +39,23 @@ export default function AdminSalesPage() {
         onChange={panel.setSearchInput}
         onClear={panel.clearSearch}
         onSubmit={panel.applySearchFromQuery}
-        onSuggestionSelect={(sale) => panel.applySearchFromQuery(getSalePrimaryProductName(sale))}
+        onSuggestionSelect={(item) => {
+          if (item.kind === "user") {
+            panel.applySearchFromQuery(formatAssignableUserLabel(item.user));
+            return;
+          }
+
+          panel.applySearchFromQuery(getSalePrimaryProductName(item.sale));
+        }}
         suggestions={panel.searchInput.trim() ? panel.searchSuggestions : []}
-        getSuggestionKey={(sale) => sale.id}
-        renderSuggestion={(sale) => (
-          <AdminSaleSearchSuggestion sale={sale} products={panel.products} />
-        )}
+        getSuggestionKey={(item) => (item.kind === "user" ? `user-${item.user.id}` : item.sale.id)}
+        renderSuggestion={(item) =>
+          item.kind === "user" ? (
+            <AdminSaleSellerSearchSuggestion user={item.user} />
+          ) : (
+            <AdminSaleSearchSuggestion sale={item.sale} products={panel.products} />
+          )
+        }
         emptyMessage="No hay ventas"
         listboxId="sales-search-listbox"
         placeholder="Buscar por producto, vendedor, alias o talle..."
@@ -224,6 +237,7 @@ export default function AdminSalesPage() {
               panel.setDeleteError("");
             }}
             canDeleteSale={panel.canDeleteSale}
+            canEditSale={panel.canEditSale}
             selectedIds={panel.selectedIds}
             onSelectionChange={panel.setSelectedIds}
             tableFooter={

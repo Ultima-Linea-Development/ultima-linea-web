@@ -296,7 +296,17 @@ export default function AdminCommissionEditForm({
       return;
     }
 
-    const sellerPayload = commissionSellerValueToPayload(sellerValue, canAssignUser);
+    const initialSeller = commissionToSellerFormValue(commission, currentUserId);
+    const sellerChanged =
+      sellerValue.sellerType !== initialSeller.sellerType ||
+      sellerValue.internalUserId !== initialSeller.internalUserId ||
+      sellerValue.externalSellerId !== initialSeller.externalSellerId ||
+      sellerValue.externalSellerName.trim() !== initialSeller.externalSellerName.trim();
+
+    const reservationSellerPayload = commissionSellerValueToPayload(
+      canAssignUser ? sellerValue : initialSeller,
+      canAssignUser
+    );
 
     await onSave({
       customer_name: trimmedCustomerName,
@@ -304,8 +314,10 @@ export default function AdminCommissionEditForm({
       commission_date: commissionDateApiValue,
       status,
       notes: notes.trim(),
-      ...sellerPayload,
-      items: lineItems.map((item) => draftToRequestItem(item, sellerPayload)),
+      ...(canAssignUser && sellerChanged
+        ? commissionSellerValueToPayload(sellerValue, canAssignUser)
+        : {}),
+      items: lineItems.map((item) => draftToRequestItem(item, reservationSellerPayload)),
     });
   };
 
@@ -371,7 +383,7 @@ export default function AdminCommissionEditForm({
           externalSellers={externalSellers}
           canAssignUser={canAssignUser}
           currentUserId={currentUserId}
-          disabled={isSubmitting || isReadOnly}
+          disabled={isSubmitting || isReadOnly || !canAssignUser}
         />
 
         <FormField htmlFor="edit-commission-notes" label="Notas" className={fieldLabelClassName}>

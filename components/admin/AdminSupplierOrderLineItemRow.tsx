@@ -14,7 +14,7 @@ import AdminCatalogProductSelect from "@/components/admin/AdminCatalogProductSel
 import AdminProductIdentityFields from "@/components/admin/AdminProductIdentityFields";
 import SupplierOrderSizeQuantityFields from "@/components/admin/SupplierOrderSizeQuantityFields";
 import AdminProductImagePreview from "@/components/admin/AdminProductImagePreview";
-import AdminTextLink from "@/components/admin/AdminTextLink";
+import AdminProductSourceSwitch from "@/components/admin/AdminProductSourceSwitch";
 import type { Product, ProductOptionsResponse, SupplierOrderItemType } from "@/lib/api";
 import { adminIconTriggerClassName } from "@/lib/admin-interactive-styles";
 import { getProductPrimaryImageUrl } from "@/lib/admin-product-image";
@@ -486,17 +486,11 @@ export default function AdminSupplierOrderLineItemRow({
               updateProductIdentity({ type: shirtType ? shirtTypeToSupplierOrderType(shirtType) : "FAN" })
             }
           />
-          <AdminTextLink
-            tone="muted"
-            className="inline-flex items-center gap-1.5"
-            onClick={() => {
-              if (isSubmitting) return;
-              handleCustomProductChange(false);
-            }}
-          >
-            <Icon name="catalog" className="size-4 shrink-0" />
-            Elegir del catálogo
-          </AdminTextLink>
+          <AdminProductSourceSwitch
+            mode="custom"
+            disabled={isSubmitting}
+            onSwitch={() => handleCustomProductChange(false)}
+          />
         </Box>
       ) : (
         <AdminCatalogProductSelect
@@ -636,8 +630,12 @@ export default function AdminSupplierOrderLineItemRow({
         />
       </FormField>
 
-      <div className="min-w-[200px]">
-        <FormField htmlFor={`order-price-${item.key}`} label="Precio unitario" required>
+      <FormField
+        htmlFor={`order-price-${item.key}`}
+        label="Precio unitario"
+        required
+        className={fieldLabelClassName}
+      >
           <CurrencyInput
             id={`order-price-${item.key}`}
             value={item.price}
@@ -656,7 +654,7 @@ export default function AdminSupplierOrderLineItemRow({
             required
           />
         </FormField>
-        {isPriceAllocationEnabled ? (
+      {isPriceAllocationEnabled ? (
           <div className="mt-2">
             <Label
               htmlFor={`order-custom-price-${item.key}`}
@@ -678,7 +676,6 @@ export default function AdminSupplierOrderLineItemRow({
             </Label>
           </div>
         ) : null}
-      </div>
 
       <Typography variant="body2" className="text-right">
         Cantidad total: {totalQuantity} · Subtotal: {formatPrice(lineTotal)}

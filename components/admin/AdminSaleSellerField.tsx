@@ -24,6 +24,7 @@ type AdminSaleSellerFieldProps = {
   onSaleDateChange: (value: string) => void;
   saleDateId?: string;
   disabled?: boolean;
+  readOnlySeller?: boolean;
 };
 
 const fieldLabelClassName = "w-full min-w-0";
@@ -39,6 +40,7 @@ export default function AdminSaleSellerField({
   onSaleDateChange,
   saleDateId = "sale-date",
   disabled = false,
+  readOnlySeller = false,
 }: AdminSaleSellerFieldProps) {
   const internalSellerOptions = useMemo(() => {
     if (canAssignUser) return assignableUsers;
@@ -49,11 +51,12 @@ export default function AdminSaleSellerField({
   }, [assignableUsers, canAssignUser, currentUserId]);
 
   const showInternalAssignee = value.sellerType === "internal" && internalSellerOptions.length > 0;
-  const isSelfOnlyAssignee = !canAssignUser && internalSellerOptions.length === 1;
   const showExternalPicker = value.sellerType === "external";
   const showNewExternalName =
     showExternalPicker &&
     (!value.externalSellerId || value.externalSellerId === NEW_EXTERNAL_SELLER_VALUE);
+
+  const sellerDisabled = disabled || readOnlySeller;
 
   return (
     <Box display="flex" direction="col" gap="3" className="w-full min-w-0">
@@ -95,7 +98,7 @@ export default function AdminSaleSellerField({
                     : {}),
                 });
               }}
-              disabled={disabled}
+              disabled={sellerDisabled}
               required
             >
               <option value="internal">Usuario del sistema</option>
@@ -121,7 +124,7 @@ export default function AdminSaleSellerField({
                     internalUserId: event.target.value,
                   })
                 }
-                disabled={disabled || isSelfOnlyAssignee}
+                disabled={sellerDisabled}
                 required
               >
                 {internalSellerOptions.map((user) => (
@@ -154,7 +157,7 @@ export default function AdminSaleSellerField({
                       nextId === NEW_EXTERNAL_SELLER_VALUE ? value.externalSellerName : "",
                   });
                 }}
-                disabled={disabled}
+                disabled={sellerDisabled}
                 required
               >
                 {externalSellers.map((seller) => (
@@ -186,7 +189,7 @@ export default function AdminSaleSellerField({
                 externalSellerName: event.target.value,
               })
             }
-            disabled={disabled}
+            disabled={sellerDisabled}
             required
           />
         </FormField>

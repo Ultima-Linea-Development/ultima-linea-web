@@ -82,6 +82,7 @@ type AdminCommissionsTableProps = {
   onEdit?: (commission: Commission) => void;
   onExport?: (commission: Commission) => void;
   onDelete?: (commission: Commission) => void;
+  canEditCommission?: (commission: Commission) => boolean;
   canDeleteCommission?: (commission: Commission) => boolean;
   selectedIds?: string[];
   onSelectionChange?: (ids: string[]) => void;
@@ -110,6 +111,7 @@ export default function AdminCommissionsTable({
   onEdit,
   onExport,
   onDelete,
+  canEditCommission,
   canDeleteCommission,
   selectedIds = [],
   onSelectionChange,
@@ -142,7 +144,11 @@ export default function AdminCommissionsTable({
     !canDeleteCommission || canDeleteCommission(commission);
 
   const getCommissionCustomerHandler = (commission: Commission) => {
-    if (onEdit && commission.status !== "exported") {
+    if (
+      onEdit &&
+      commission.status !== "exported" &&
+      (!canEditCommission || canEditCommission(commission))
+    ) {
       return () => onEdit(commission);
     }
     if (onViewDetails) {
@@ -163,7 +169,11 @@ export default function AdminCommissionsTable({
       });
     }
 
-    if (onEdit && commission.status !== "exported") {
+    if (
+      onEdit &&
+      commission.status !== "exported" &&
+      (!canEditCommission || canEditCommission(commission))
+    ) {
       actions.push({
         id: "edit",
         label: "Editar",

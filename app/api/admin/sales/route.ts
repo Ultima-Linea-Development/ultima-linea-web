@@ -30,7 +30,7 @@ import { parseSaleDateInput } from "@/lib/sale-date";
 import { CreateSaleItemInput, processSaleItem } from "@/lib/server/create-sale";
 import { normalizeSaleForResponse } from "@/lib/server/sale-items";
 import { trackAdminAction } from "@/lib/server/admin-history";
-import { validateProductReservationForSale } from "@/lib/server/product-reservation";
+import { validateProductReservationForSale, consumeProductReservationsForSale } from "@/lib/server/product-reservation";
 
 type CreateSaleItemBody = {
   product_id?: string;
@@ -192,6 +192,28 @@ export async function POST(request: NextRequest) {
       if (result.updatedProduct && !updatedProductIds.has(result.updatedProduct.id)) {
         updatedProductIds.add(result.updatedProduct.id);
         updatedProducts.push(toProductResponse(result.updatedProduct, 2));
+      }
+    }
+
+    const reservationUpdatedProducts = await consumeProductReservationsForSale(
+      products,
+      sellerResult,
+      lineItems.map((item) => ({
+        product_id: item.product_id,
+        size: item.size,
+        quantity: item.quantity,
+        skip_stock_deduction: item.skip_stock_deduction,
+      }))
+    );
+
+    for (const product of reservationUpdatedProducts) {
+      const response = toProductResponse(product, 2);
+      if (updatedProductIds.has(product.id)) {
+        const index = updatedProducts.findIndex((item) => item.id === product.id);
+        if (index >= 0) updatedProducts[index] = response;
+      } else {
+        updatedProductIds.add(product.id);
+        updatedProducts.push(response);
       }
     }
 

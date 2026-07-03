@@ -32,9 +32,13 @@ export function reservationSellerFieldsFromFormValue(
     };
   }
 
+  const reservedForUserId =
+    payload.created_by ??
+    (value.sellerType === "internal" ? value.internalUserId.trim() : "");
+
   return {
     reserved_seller_type: "internal",
-    ...(payload.created_by ? { reserved_for_user_id: payload.created_by } : {}),
+    ...(reservedForUserId ? { reserved_for_user_id: reservedForUserId } : {}),
   };
 }
 

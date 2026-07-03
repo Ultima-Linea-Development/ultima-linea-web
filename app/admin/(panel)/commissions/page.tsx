@@ -288,6 +288,7 @@ export default function AdminCommissionsPage() {
               panel.setDeleteError("");
             }}
             canDeleteCommission={panel.canDeleteCommission}
+            canEditCommission={panel.canEditCommission}
             selectedIds={panel.selectedIds}
             onSelectionChange={panel.setSelectedIds}
             tableFooter={

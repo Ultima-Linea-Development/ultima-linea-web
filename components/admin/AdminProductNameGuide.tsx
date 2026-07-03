@@ -119,7 +119,7 @@ export default function AdminProductNameGuideTrigger({ className }: AdminProduct
 export function AdminProductNameFieldLabel() {
   return (
     <span className="inline-flex items-center gap-1.5">
-      Nombre *
+      Nombre
       <AdminProductNameGuideTrigger />
     </span>
   );

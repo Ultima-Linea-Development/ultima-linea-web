@@ -63,6 +63,17 @@ export function assertCanDeleteOwnedResource(
   return null;
 }
 
+export function assertCanModifyOwnedResource(
+  auth: AuthContext,
+  createdBy?: string | null
+): NextResponse | null {
+  if (isAdminRole(auth.role)) return null;
+  if (!createdBy || createdBy !== auth.user_id) {
+    return jsonError("No tenés permiso para editar este recurso", 403);
+  }
+  return null;
+}
+
 export function isNextResponse(value: unknown): value is NextResponse {
   return value instanceof NextResponse;
 }

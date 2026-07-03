@@ -5,9 +5,11 @@ import {
   isNextResponse,
   jsonError,
   assertCanDeleteOwnedResource,
+  assertCanModifyOwnedResource,
   requireStaff,
   requireAuth,
 } from "@/lib/server/auth-middleware";
+import { isAdminRole } from "@/lib/roles";
 import { toProductResponse } from "@/lib/server/products";
 import { adjustProductStock } from "@/lib/server/sales";
 import { parseSaleDateInput } from "@/lib/sale-date";
@@ -20,6 +22,8 @@ import {
   type SaleSellerType,
 } from "@/lib/server/sale-seller";
 import { trackAdminAction } from "@/lib/server/admin-history";
+import { validateProductReservationForSale, consumeProductReservationsForSale } from "@/lib/server/product-reservation";
+import type { ResolvedSaleSeller } from "@/lib/server/sale-seller";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -63,6 +67,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
     const body = (await request.json()) as UpdateSaleBody;
+
+    const sales = await getSalesCollection<SaleDocument>();
+    const currentSale = await sales.findOne({ _id: id });
+    if (!currentSale) return jsonError("Venta no encontrada", 404);
+
+    const denied = assertCanModifyOwnedResource(auth, currentSale.created_by);
+    if (denied) return denied;
+
     const itemInputs = parseUpdateSaleItems(body);
     const saleDateInput = body.sale_date?.trim();
     const updateFields: Record<string, unknown> = {
@@ -101,6 +113,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       body.external_seller_name != null;
 
     if (hasSellerUpdate) {
+      if (!isAdminRole(auth.role)) {
+        return jsonError("No tenés permiso para modificar el vendedor", 403);
+      }
+
       const externalSellers = await getExternalSellersCollection<ExternalSellerDocument>();
       const sellerResult = await resolveSaleSellerForUpdate(auth, externalSellers, {
         seller_type: body.seller_type,
@@ -123,10 +139,6 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       if (itemInputs && itemInputs.length === 0) {
         return jsonError("Agregá al menos un producto", 400);
       }
-
-      const sales = await getSalesCollection<SaleDocument>();
-      const currentSale = await sales.findOne({ _id: id });
-      if (!currentSale) return jsonError("Venta no encontrada", 404);
 
       const products = await getProductsCollection<ProductDocument>();
       const previousItems = getSaleLineItemsFromDoc(currentSale);
@@ -185,6 +197,32 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         return jsonError(itemProcessingError.error, itemProcessingError.status);
       }
 
+      const sellerForReservation: ResolvedSaleSeller = {
+        created_by:
+          (typeof updateFields.created_by === "string"
+            ? updateFields.created_by
+            : currentSale.created_by) ?? auth.user_id,
+        external_seller_id:
+          typeof updateFields.external_seller_id === "string"
+            ? updateFields.external_seller_id
+            : currentSale.external_seller_id,
+        external_seller_name:
+          typeof updateFields.external_seller_name === "string"
+            ? updateFields.external_seller_name
+            : currentSale.external_seller_name,
+      };
+
+      await consumeProductReservationsForSale(
+        products,
+        sellerForReservation,
+        nextLineItems.map((item) => ({
+          product_id: item.product_id,
+          size: item.size,
+          quantity: item.quantity,
+          skip_stock_deduction: item.skip_stock_deduction,
+        }))
+      );
+
       updateFields.items = nextLineItems;
       updateFields.total = nextLineItems.reduce((sum, item) => sum + item.total, 0);
       unsetFields.product_id = "";
@@ -203,7 +241,6 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       return jsonError("No hay cambios para guardar", 400);
     }
 
-    const sales = await getSalesCollection<SaleDocument>();
     const updateQuery: Record<string, unknown> = { $set: updateFields };
     if (Object.keys(unsetFields).length > 0) {
       updateQuery.$unset = unsetFields;

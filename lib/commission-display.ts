@@ -63,7 +63,11 @@ export function getCommissionLabel(commission: Commission): string {
   return commission.customer_name;
 }
 
-export function commissionMatchesQuery(commission: Commission, query: string): boolean {
+export function commissionMatchesQuery(
+  commission: Commission,
+  query: string,
+  assignableUsers: SaleAssignableUser[] = []
+): boolean {
   const trimmed = query.trim();
   if (!trimmed) return true;
 
@@ -75,6 +79,7 @@ export function commissionMatchesQuery(commission: Commission, query: string): b
       commission.external_seller_name,
       commission.supplier_order_name,
       commission.notes,
+      getCommissionSellerLabel(commission, assignableUsers),
       ...commission.items.flatMap((item) => [
         item.shirt_name,
         item.sizes,

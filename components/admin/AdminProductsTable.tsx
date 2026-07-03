@@ -26,7 +26,7 @@ import AdminTableColumnFilter from "@/components/admin/AdminTableColumnFilter";
 import AdminTableMobileActionsMenu, {
   type AdminTableMobileAction,
 } from "@/components/admin/AdminTableMobileActionsMenu";
-import { sortSizeLabels } from "@/lib/product-inventory";
+import { sortSizeLabels, getProductTotalStock, formatProductSizeStockDisplay } from "@/lib/product-inventory";
 import { isProductReserved } from "@/lib/product-reservation";
 
 const PER_PAGE = 10;
@@ -120,7 +120,7 @@ export default function AdminProductsTable({
       />
     ) : null;
 
-  const colSpan = onSelectionChange ? 6 : 5;
+  const colSpan = onSelectionChange ? 7 : 6;
 
   const sortedSizeOptions = sortSizeLabels(sizeOptions);
 
@@ -234,6 +234,9 @@ export default function AdminProductsTable({
       </th>
       <th className={thClass}>{renderSizeHeader()}</th>
       <th className={thClass}>
+        <Typography variant="body2">Stock</Typography>
+      </th>
+      <th className={thClass}>
         <Typography variant="body2">Precio</Typography>
       </th>
       <th className={thClass}>
@@ -308,6 +311,9 @@ export default function AdminProductsTable({
                   left={p.team ?? "—"}
                   right={formatPrice(p.price)}
                 />
+                <Typography variant="body2" className="tabular-nums text-muted-foreground">
+                  Stock total: {formatProductSizeStockDisplay(getProductTotalStock(p)) || "—"}
+                </Typography>
                 <AdminProductSizeStock
                   product={p}
                   highlightSize={sizeFilter || undefined}
@@ -357,6 +363,11 @@ export default function AdminProductsTable({
                       product={p}
                       highlightSize={sizeFilter || undefined}
                     />
+                  </td>
+                  <td className={cellClass}>
+                    <Typography variant="body2" className="whitespace-nowrap tabular-nums">
+                      {formatProductSizeStockDisplay(getProductTotalStock(p)) || "—"}
+                    </Typography>
                   </td>
                   <td className={cellClass}>
                     <Typography variant="body2" className="whitespace-nowrap tabular-nums">

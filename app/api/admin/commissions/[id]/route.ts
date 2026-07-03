@@ -14,9 +14,11 @@ import {
   isNextResponse,
   jsonError,
   assertCanDeleteOwnedResource,
+  assertCanModifyOwnedResource,
   requireStaff,
   requireAuth,
 } from "@/lib/server/auth-middleware";
+import { isAdminRole } from "@/lib/roles";
 import {
   normalizeCommissionForResponse,
   parseCommissionLineItems,
@@ -93,6 +95,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       return jsonError("No se puede editar un encargo exportado", 400);
     }
 
+    const denied = assertCanModifyOwnedResource(auth, existing.created_by);
+    if (denied) return denied;
+
     const updateFields: Record<string, unknown> = {
       updated_at: new Date(),
     };
@@ -145,6 +150,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       body.external_seller_id != null ||
       body.external_seller_name != null
     ) {
+      if (!isAdminRole(auth.role)) {
+        return jsonError("No tenés permiso para modificar el vendedor", 403);
+      }
+
       const externalSellers = await getExternalSellersCollection<ExternalSellerDocument>();
       const sellerResult = await resolveSaleSellerForUpdate(auth, externalSellers, {
         seller_type: body.seller_type,

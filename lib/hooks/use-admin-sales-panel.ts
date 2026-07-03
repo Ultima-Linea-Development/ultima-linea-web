@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PER_PAGE } from "@/components/admin/AdminSalesTable";
 import { getToken, getUserFromToken, getCurrentUserId, isAdmin } from "@/lib/auth";
-import { canDeleteOwnedResource } from "@/lib/roles";
+import { canDeleteOwnedResource, canEditOwnedResource } from "@/lib/roles";
 import {
   adminSalesApi,
   adminProductsApi,
@@ -14,7 +14,10 @@ import {
   type SaleAssignableUser,
   type UpdateSaleRequest,
 } from "@/lib/api";
-import { filterSalesByQuery } from "@/lib/admin-sales-search";
+import {
+  buildAdminSaleSearchSuggestions,
+  filterSalesByQuery,
+} from "@/lib/admin-sales-search";
 import { filterProductsForSalePicker } from "@/lib/sale-products";
 import { normalizeSaleSearchQuery } from "@/lib/sale-items";
 import { useAdminSearch } from "@/lib/hooks/use-admin-search";
@@ -71,20 +74,32 @@ export function useAdminSalesPanel() {
 
   const resetPage = useCallback(() => setPage(1), []);
 
+  const filterSalesCached = useCallback(
+    (items: Sale[], query: string, limit: number) =>
+      filterSalesByQuery(items, query, limit, assignableUsers),
+    [assignableUsers]
+  );
+
   const {
     searchInput,
     setSearchInput,
     searchQuery,
     searchTick,
-    searchSuggestions,
+    searchSuggestions: saleSearchSuggestions,
     searchCacheRef,
     applySearchFromQuery,
     clearSearch,
     invalidateSearchCache,
   } = useAdminSearch<Sale>({
     searchApi: (token, query) => adminSalesApi.search(token, normalizeSaleSearchQuery(query)),
-    filterCached: filterSalesByQuery,
+    filterCached: filterSalesCached,
   });
+
+  const searchSuggestions = useMemo(
+    () =>
+      buildAdminSaleSearchSuggestions(searchInput, saleSearchSuggestions, assignableUsers),
+    [searchInput, saleSearchSuggestions, assignableUsers]
+  );
 
   const applySalesSearchFromQuery = useCallback(
     (query: string, resetPage?: () => void) => {
@@ -317,6 +332,12 @@ export function useAdminSalesPanel() {
     []
   );
 
+  const canEditSale = useCallback(
+    (sale: Sale) =>
+      canEditOwnedResource(getUserFromToken()?.role, getCurrentUserId(), sale.created_by),
+    []
+  );
+
   const handleBulkDeleteConfirm = useCallback(async () => {
     if (!bulkConfirmIds?.length) return;
 
@@ -433,6 +454,7 @@ export function useAdminSalesPanel() {
     handleConfirmDelete,
     handleBulkDeleteConfirm,
     canDeleteSale,
+    canEditSale,
     selectedIds,
     setSelectedIds,
     bulkConfirmIds,

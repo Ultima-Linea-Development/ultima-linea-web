@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { ExternalSellerDocument, ProductDocument } from "@/lib/server/models";
+import { ExternalSellerDocument, Product, ProductDocument, productFromDoc } from "@/lib/server/models";
 import { resolveExternalSeller } from "@/lib/server/external-sellers";
 import { isAssignableStaffUser } from "@/lib/server/users";
 import type { ResolvedSaleSeller } from "@/lib/server/sale-seller";
@@ -659,6 +659,159 @@ export async function resolveCatalogReservationEntries(
   }
 
   return { catalog_reservation_entries: catalogEntries };
+}
+
+export type SaleReservationConsumeItem = {
+  product_id: string;
+  size?: string;
+  quantity: number;
+  skip_stock_deduction?: boolean;
+};
+
+function consumeCatalogReservationEntries(
+  entries: CatalogReservationEntry[],
+  seller: ResolvedSaleSeller,
+  size: string,
+  quantity: number
+): { entries: CatalogReservationEntry[]; consumed: number } {
+  let remaining = quantity;
+  const updated: CatalogReservationEntry[] = [];
+
+  for (const entry of entries) {
+    if (remaining <= 0) {
+      updated.push(entry);
+      continue;
+    }
+
+    if (!sizesMatch(entry.size, size) || !reservationFieldsMatchSeller(entry, seller)) {
+      updated.push(entry);
+      continue;
+    }
+
+    const consumed = Math.min(remaining, entry.quantity);
+    remaining -= consumed;
+    const nextQuantity = entry.quantity - consumed;
+
+    if (nextQuantity > 0) {
+      updated.push({ ...entry, quantity: nextQuantity });
+    }
+  }
+
+  return { entries: updated, consumed: quantity - remaining };
+}
+
+function removeLegacySizeReservation(
+  reservedBySizes: Record<string, ProductReservationFields>,
+  size: string
+): Record<string, ProductReservationFields> {
+  const next = { ...reservedBySizes };
+
+  for (const reservedSize of Object.keys(next)) {
+    if (sizesMatch(reservedSize, size)) {
+      delete next[reservedSize];
+    }
+  }
+
+  return next;
+}
+
+export async function consumeProductReservationsForSale(
+  products: Collection<ProductDocument>,
+  seller: ResolvedSaleSeller,
+  items: SaleReservationConsumeItem[]
+): Promise<Product[]> {
+  const consumeByProduct = new Map<string, Map<string, number>>();
+
+  for (const item of items) {
+    if (item.skip_stock_deduction) continue;
+
+    const productId = item.product_id.trim();
+    const size = item.size?.trim() ?? "";
+    if (!productId || !size || !Number.isInteger(item.quantity) || item.quantity <= 0) {
+      continue;
+    }
+
+    const sizeQuantities = consumeByProduct.get(productId) ?? new Map<string, number>();
+    sizeQuantities.set(size, (sizeQuantities.get(size) ?? 0) + item.quantity);
+    consumeByProduct.set(productId, sizeQuantities);
+  }
+
+  const updatedProducts: Product[] = [];
+  const now = new Date();
+
+  for (const [productId, sizeQuantities] of consumeByProduct) {
+    const productDoc = await products.findOne({ _id: productId, ...nonDeletedProductFilter });
+    if (!productDoc) continue;
+
+    const product = productFromDoc(productDoc);
+    let catalogEntries = getCatalogReservationEntriesFromProduct(product);
+    let catalogChanged = false;
+
+    for (const [size, quantity] of sizeQuantities) {
+      if (catalogEntries.length === 0) break;
+
+      const result = consumeCatalogReservationEntries(catalogEntries, seller, size, quantity);
+      if (result.consumed > 0) {
+        catalogEntries = result.entries;
+        catalogChanged = true;
+      }
+    }
+
+    let reservedBySizes = product.reserved_by_sizes;
+    let legacyChanged = false;
+
+    if (reservedBySizes && Object.keys(reservedBySizes).length > 0) {
+      for (const [size] of sizeQuantities) {
+        const sizeReservation = findSizeReservation(reservedBySizes, size);
+        if (sizeReservation && reservationFieldsMatchSeller(sizeReservation, seller)) {
+          reservedBySizes = removeLegacySizeReservation(reservedBySizes, size);
+          legacyChanged = true;
+        }
+      }
+    }
+
+    if (!catalogChanged && !legacyChanged) continue;
+
+    const setFields: Record<string, unknown> = { updated_at: now };
+    const unsetFields: Record<string, ""> = {};
+
+    if (catalogChanged) {
+      if (catalogEntries.length > 0) {
+        setFields.catalog_reservation_entries = catalogEntries;
+      } else {
+        setFields.catalog_reservation_entries = [];
+        Object.assign(unsetFields, PRODUCT_CATALOG_RESERVATION_UNSET_FIELDS);
+      }
+    }
+
+    if (legacyChanged) {
+      if (reservedBySizes && Object.keys(reservedBySizes).length > 0) {
+        setFields.reserved_by_sizes = reservedBySizes;
+      } else {
+        unsetFields.reserved_by_sizes = "";
+        if (!catalogChanged || catalogEntries.length === 0) {
+          Object.assign(unsetFields, PRODUCT_RESERVATION_UNSET_FIELDS);
+        }
+      }
+    }
+
+    const updateQuery: Record<string, unknown> = { $set: setFields };
+    if (Object.keys(unsetFields).length > 0) {
+      updateQuery.$unset = unsetFields;
+    }
+
+    const updatedDoc = await products.findOneAndUpdate(
+      { _id: productId, ...nonDeletedProductFilter },
+      updateQuery,
+      { returnDocument: "after" }
+    );
+
+    if (updatedDoc) {
+      updatedProducts.push(productFromDoc(updatedDoc));
+    }
+  }
+
+  return updatedProducts;
 }
 
 export function validateProductReservationForSale(

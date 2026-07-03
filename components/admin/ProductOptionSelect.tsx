@@ -53,7 +53,7 @@ export default function ProductOptionSelect({
   }, [options]);
 
   return (
-    <FormField htmlFor={id} label={label} required={required}>
+    <FormField htmlFor={id} label={label} required={required} className="w-full min-w-0">
       <Select
         id={id}
         value={isCustom ? CUSTOM_OPTION_VALUE : value}
