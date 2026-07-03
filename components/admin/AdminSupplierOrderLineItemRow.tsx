@@ -20,6 +20,7 @@ import { adminIconTriggerClassName } from "@/lib/admin-interactive-styles";
 import { getProductPrimaryImageUrl } from "@/lib/admin-product-image";
 import { SUPPLIER_ORDER_ITEM_TYPE_OPTIONS } from "@/lib/supplier-order-display";
 import {
+  buildReservationRowsFromSizeRows,
   emptySupplierOrderSizeRow,
   draftHasSizeReservations,
   getReservedQuantityBySizesFromReservationRows,
@@ -405,6 +406,17 @@ export default function AdminSupplierOrderLineItemRow({
   const showReservationSection = Boolean(reservationConfig);
 
   const handleReserveProductChange = (reserveProduct: boolean) => {
+    if (reserveProduct && item.reservationRows.length === 0) {
+      onChange(item.key, {
+        reserveProduct,
+        reservationRows: buildReservationRowsFromSizeRows(
+          item.sizeRows,
+          item.reservationSellerValue
+        ),
+      });
+      return;
+    }
+
     onChange(item.key, {
       reserveProduct,
       reservationRows: reserveProduct ? item.reservationRows : [],

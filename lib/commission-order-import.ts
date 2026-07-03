@@ -8,7 +8,7 @@ import {
   extractKitTypeFromName,
   extractProductTypeFromName,
 } from "@/lib/product-name";
-import { reservationRowsFromLineItem, sizeRowsFromLineItem, buildReservationRowsFromSizeRows } from "@/lib/supplier-order-sizes";
+import { sizeRowsFromLineItem } from "@/lib/supplier-order-sizes";
 import { commissionToSellerFormValue } from "@/lib/commission-seller";
 
 export function buildCommissionExportNote(
@@ -52,7 +52,6 @@ export function commissionLineItemToSupplierOrderDraft(
   const exportNote = buildCommissionExportNote(commission, assignableUsers);
   const description = [exportNote, item.description?.trim()].filter(Boolean).join(" · ");
   const sizeRows = sizeRowsFromLineItem(item);
-  const reservationRows = reservationRowsFromLineItem(item, currentUserId);
   const sellerValue = createLineItemReservationSellerValue(
     {
       reservationSellerValue: commissionToSellerFormValue(commission, currentUserId),
@@ -64,10 +63,6 @@ export function commissionLineItemToSupplierOrderDraft(
     },
     currentUserId
   );
-  const resolvedReservationRows =
-    item.reserved && reservationRows.length === 0
-      ? buildReservationRowsFromSizeRows(sizeRows, sellerValue)
-      : reservationRows;
 
   return {
     key: `${commission.id}-${item.id}`,
@@ -87,13 +82,13 @@ export function commissionLineItemToSupplierOrderDraft(
     isCustomProduct: !item.product_id && !matchedProduct,
     type: item.type,
     sizeRows,
-    reservationRows: resolvedReservationRows,
+    reservationRows: [],
     dorsal: item.dorsal ?? "",
     description,
     link: item.link ?? "",
     price: String(item.price),
     isCustomPrice: true,
-    reserveProduct: Boolean(item.reserved) || resolvedReservationRows.length > 0,
+    reserveProduct: false,
     reservationSellerValue: sellerValue,
   };
 }
