@@ -199,7 +199,7 @@ function validateLineItems(
       return `Precio inválido para ${item.productName}.`;
     }
 
-    if (item.reserveProduct && item.productId) {
+    if (item.reserveProduct) {
       const reservationError = validateSupplierOrderLineItemReservations(
         item,
         canAssignUser,

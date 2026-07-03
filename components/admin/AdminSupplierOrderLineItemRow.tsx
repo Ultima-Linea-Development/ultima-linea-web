@@ -157,7 +157,7 @@ export function getSupplierOrderLineItemReservationRequestFields(
     : {};
   const reservedSizes = Object.keys(reservedQuantityBySizes);
 
-  if (reservedSizes.length === 0 || !item.productId) {
+  if (reservedSizes.length === 0) {
     return {
       reserved: false,
       reserved_sizes: [] as string[],
@@ -200,7 +200,7 @@ export function validateSupplierOrderLineItemReservations(
   canAssignUser: boolean,
   mode: "inherit" | "line" = "line"
 ): string | null {
-  if (!item.reserveProduct || !item.productId) return null;
+  if (!item.reserveProduct) return null;
 
   if (!lineItemDraftHasReservationEnabled(item)) {
     return `Indicá cuántas unidades reservar por talle en ${item.productName}.`;
@@ -399,17 +399,10 @@ export default function AdminSupplierOrderLineItemRow({
       productId: isCustom ? undefined : item.productId,
       productName: isCustom ? generatedProductName : item.productName,
       isNameManuallyEdited: isCustom ? false : item.isNameManuallyEdited,
-      ...(isCustom
-        ? {
-            reserveProduct: false,
-            reservationRows: [],
-          }
-        : {}),
     });
   };
 
-  const showReservationSection =
-    Boolean(reservationConfig) && Boolean(item.productId) && !item.isCustomProduct;
+  const showReservationSection = Boolean(reservationConfig);
 
   const handleReserveProductChange = (reserveProduct: boolean) => {
     onChange(item.key, {
@@ -576,6 +569,7 @@ export default function AdminSupplierOrderLineItemRow({
                 : undefined
             }
             showSellerField={false}
+            pendingCatalogProduct={item.isCustomProduct || !item.productId}
           />
 
           {item.reserveProduct && (

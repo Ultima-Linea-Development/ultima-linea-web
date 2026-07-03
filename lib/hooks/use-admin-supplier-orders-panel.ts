@@ -9,7 +9,9 @@ import {
   adminProductsApi,
   adminSalesApi,
   adminSuppliersApi,
+  adminCommissionsApi,
   type CreateSupplierOrderRequest,
+  type Commission,
   type ExternalSeller,
   type Product,
   type SaleAssignableUser,
@@ -53,6 +55,7 @@ export function useAdminSupplierOrdersPanel() {
   const [exportConfirmOrder, setExportConfirmOrder] = useState<SupplierOrder | null>(null);
   const [exportError, setExportError] = useState("");
   const [isExportSubmitting, setIsExportSubmitting] = useState(false);
+  const [pendingCommissions, setPendingCommissions] = useState<Commission[]>([]);
 
   const {
     selectedIds,
@@ -123,6 +126,19 @@ export function useAdminSupplierOrdersPanel() {
 
     setAssignableUsers(usersResponse.data?.users ?? []);
     setExternalSellers(sellersResponse.data?.sellers ?? []);
+  }, []);
+
+  const loadPendingCommissions = useCallback(async () => {
+    const token = getToken();
+    if (!token) return;
+
+    const response = await adminCommissionsApi.getAll(token, {
+      page: 1,
+      per_page: 200,
+      status: "pending",
+    });
+
+    setPendingCommissions(response.data?.commissions ?? []);
   }, []);
 
   const loadOrders = useCallback(async () => {
@@ -201,9 +217,9 @@ export function useAdminSupplierOrdersPanel() {
     if (!showOrderForm && !editingOrder) return;
 
     queueMicrotask(() => {
-      void Promise.all([loadSuppliers(), loadProducts(), loadSellerData()]);
+      void Promise.all([loadSuppliers(), loadProducts(), loadSellerData(), loadPendingCommissions()]);
     });
-  }, [showOrderForm, editingOrder, loadSuppliers, loadProducts, loadSellerData]);
+  }, [showOrderForm, editingOrder, loadSuppliers, loadProducts, loadSellerData, loadPendingCommissions]);
 
   const handleCreateOrder = useCallback(
     async (payload: CreateSupplierOrderRequest) => {
@@ -437,6 +453,7 @@ export function useAdminSupplierOrdersPanel() {
     products,
     assignableUsers,
     externalSellers,
+    pendingCommissions,
     isAdmin: isAdmin(),
     getCurrentUserId,
     error,

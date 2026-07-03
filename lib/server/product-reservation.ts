@@ -223,7 +223,6 @@ export function lineItemHasReservation(
     | "reservation_entries"
   >
 ): boolean {
-  if (!item.product_id?.trim()) return false;
   if (item.reservation_entries && item.reservation_entries.length > 0) return true;
   if (
     item.reserved_quantity_by_sizes &&
@@ -446,7 +445,9 @@ export async function syncProductReservationsFromItems(
   for (const item of items) {
     if (!lineItemHasReservation(item)) continue;
 
-    const productId = item.product_id!.trim();
+    const productId = item.product_id?.trim();
+    if (!productId) continue;
+
     const entries = getLineItemReservationEntries(item);
     if (entries.length === 0) continue;
 

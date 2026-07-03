@@ -142,7 +142,9 @@ export default function AdminLineItemSizeReservationFields({
 
       {reservationRows.length === 0 ? (
         <Typography variant="body2" color="muted">
-          Agregá los talles que querés reservar del catálogo.
+          {catalogProduct
+            ? "Agregá los talles que querés reservar del catálogo."
+            : "Agregá los talles que querés reservar. Se aplicarán al catálogo cuando el producto esté cargado."}
         </Typography>
       ) : null}
 

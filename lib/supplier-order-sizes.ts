@@ -51,6 +51,26 @@ export function emptySizeReservationRow(currentUserId: string | null): SupplierO
   };
 }
 
+export function buildReservationRowsFromSizeRows(
+  sizeRows: SupplierOrderSizeQuantityRow[],
+  reservationSellerValue: SaleSellerFormValue
+): SupplierOrderSizeReservationRow[] {
+  return sizeRows
+    .map((row) => {
+      const size = row.size.trim();
+      const quantity = Number(row.quantity);
+      if (!size || !Number.isInteger(quantity) || quantity <= 0) return null;
+
+      return {
+        id: newRowId(),
+        size,
+        quantity: String(quantity),
+        reservationSellerValue,
+      };
+    })
+    .filter((row): row is SupplierOrderSizeReservationRow => Boolean(row));
+}
+
 export function getOrderSizeLimits(
   rows: SupplierOrderSizeQuantityRow[]
 ): Record<string, number> {

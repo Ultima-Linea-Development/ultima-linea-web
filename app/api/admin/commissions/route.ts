@@ -24,6 +24,7 @@ import {
   mapSaleSellerToCommissionFields,
   normalizeCommissionForResponse,
   parseCommissionLineItems,
+  parseCommissionStatus,
   type CommissionLineItemInput,
 } from "@/lib/server/commissions";
 import { resolveSaleSellerForCreate } from "@/lib/server/sale-seller";
@@ -61,16 +62,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     let page = parseInt(searchParams.get("page") || "1", 10);
     let perPage = parseInt(searchParams.get("per_page") || "10", 10);
+    const statusParam = searchParams.get("status")?.trim();
+    const statusFilter = statusParam ? parseCommissionStatus(statusParam) : null;
+
+    if (statusParam && !statusFilter) {
+      return jsonError("Estado de encargo inválido", 400);
+    }
 
     if (Number.isNaN(page) || page < 1) page = 1;
     if (Number.isNaN(perPage) || perPage < 1) perPage = 10;
-    if (perPage > 50) perPage = 50;
+    if (perPage > (statusFilter ? 200 : 50)) {
+      perPage = statusFilter ? 200 : 50;
+    }
 
     const collection = await getCommissionsCollection<CommissionDocument>();
-    const total = await collection.countDocuments({});
+    const filter = statusFilter ? { status: statusFilter } : {};
+    const total = await collection.countDocuments(filter);
     const skip = (page - 1) * perPage;
     const docs = await collection
-      .find({})
+      .find(filter)
       .sort({ created_at: -1, _id: -1 })
       .skip(skip)
       .limit(perPage)

@@ -20,6 +20,7 @@ type AdminLineItemReservationFieldProps = {
   disabled?: boolean;
   inheritSellerLabel?: string;
   showSellerField?: boolean;
+  pendingCatalogProduct?: boolean;
 };
 
 export default function AdminLineItemReservationField({
@@ -35,6 +36,7 @@ export default function AdminLineItemReservationField({
   disabled = false,
   inheritSellerLabel,
   showSellerField = true,
+  pendingCatalogProduct = false,
 }: AdminLineItemReservationFieldProps) {
   const checkboxId = `${idPrefix}-reserved`;
 
@@ -52,8 +54,12 @@ export default function AdminLineItemReservationField({
         <Label htmlFor={checkboxId} className="cursor-pointer">
           <Typography variant="body2">
             {inheritSellerLabel
-              ? `Reservar del catálogo para ${inheritSellerLabel}`
-              : "Reservar del catálogo"}
+              ? pendingCatalogProduct
+                ? `Reservar para ${inheritSellerLabel} (pendiente de catálogo)`
+                : `Reservar del catálogo para ${inheritSellerLabel}`
+              : pendingCatalogProduct
+                ? "Reservar producto (pendiente de catálogo)"
+                : "Reservar del catálogo"}
           </Typography>
         </Label>
       </div>

@@ -82,6 +82,7 @@ export default function AdminSupplierOrdersPage() {
             suppliers={panel.suppliers}
             assignableUsers={panel.assignableUsers}
             externalSellers={panel.externalSellers}
+            pendingCommissions={panel.pendingCommissions}
             currentUserId={panel.getCurrentUserId()}
             canAssignUser={panel.isAdmin}
             isSubmitting={panel.isSubmitting}

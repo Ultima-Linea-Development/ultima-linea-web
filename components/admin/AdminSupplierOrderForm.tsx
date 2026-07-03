@@ -61,6 +61,11 @@ import { parseSupplierOrderOptionalCost } from "@/lib/supplier-order-costs";
 import { getTodaySaleDateDisplayValue, saleDateInputToApiValue } from "@/lib/sale-date";
 import { formatPrice } from "@/lib/utils";
 import { createDefaultSaleSellerValue } from "@/lib/sale-seller";
+import {
+  isEmptySupplierOrderLineItemDraft,
+  pendingCommissionsToSupplierOrderDrafts,
+} from "@/lib/commission-order-import";
+import type { Commission } from "@/lib/api";
 
 const fieldLabelClassName = "w-full min-w-0";
 
@@ -69,6 +74,7 @@ type AdminSupplierOrderFormProps = {
   suppliers: Supplier[];
   assignableUsers: SaleAssignableUser[];
   externalSellers: ExternalSeller[];
+  pendingCommissions: Commission[];
   currentUserId: string | null;
   canAssignUser: boolean;
   isSubmitting: boolean;
@@ -128,7 +134,7 @@ function validateLineItems(
       return `Precio inválido para ${item.productName}.`;
     }
 
-    if (item.reserveProduct && item.productId) {
+    if (item.reserveProduct) {
       const reservationError = validateSupplierOrderLineItemReservations(
         item,
         canAssignUser,
@@ -146,6 +152,7 @@ export default function AdminSupplierOrderForm({
   suppliers,
   assignableUsers,
   externalSellers,
+  pendingCommissions,
   currentUserId,
   canAssignUser,
   isSubmitting,
@@ -172,8 +179,22 @@ export default function AdminSupplierOrderForm({
       reservationSellerValue: createDefaultSaleSellerValue(currentUserId),
     },
   ]);
+  const [loadedCommissionIds, setLoadedCommissionIds] = useState<string[]>([]);
   const [productOptions, setProductOptions] = useState<ProductOptionsResponse>(
     EMPTY_PRODUCT_OPTIONS
+  );
+
+  const pendingCommissionsCount = useMemo(
+    () => pendingCommissions.filter((commission) => commission.status === "pending").length,
+    [pendingCommissions]
+  );
+  const remainingPendingCommissionsCount = useMemo(
+    () =>
+      pendingCommissions.filter(
+        (commission) =>
+          commission.status === "pending" && !loadedCommissionIds.includes(commission.id)
+      ).length,
+    [pendingCommissions, loadedCommissionIds]
   );
 
   useEffect(() => {
@@ -231,6 +252,39 @@ export default function AdminSupplierOrderForm({
         totalPaid
       )
     );
+  };
+
+  const loadPendingCommissions = () => {
+    const { drafts, commissionIds, exportNotes } = pendingCommissionsToSupplierOrderDrafts(
+      pendingCommissions,
+      products,
+      currentUserId,
+      assignableUsers,
+      loadedCommissionIds
+    );
+
+    if (drafts.length === 0) {
+      onError(
+        remainingPendingCommissionsCount === 0 && loadedCommissionIds.length > 0
+          ? "Los encargos pendientes ya están cargados en este pedido."
+          : "No hay encargos pendientes para cargar."
+      );
+      return;
+    }
+
+    setLineItems((prev) => {
+      const base = prev.length === 1 && isEmptySupplierOrderLineItemDraft(prev[0]) ? [] : prev;
+      return allocateSupplierOrderPrices([...drafts, ...base], totalPaid);
+    });
+
+    setLoadedCommissionIds((prev) => [...prev, ...commissionIds]);
+
+    if (exportNotes.length > 0) {
+      setNotes((prev) => {
+        const merged = exportNotes.join("\n");
+        return prev.trim() ? `${prev.trim()}\n${merged}` : merged;
+      });
+    }
   };
 
   const handleTotalPaidChange = (value: string) => {
@@ -317,6 +371,7 @@ export default function AdminSupplierOrderForm({
       ...supplierValueToPayload(supplierValue),
       ...supplierOrderMilestoneDatesToCreatePayload(milestoneDates),
       items: finalLineItems.map((item) => draftToRequestItem(item, canAssignUser)),
+      ...(loadedCommissionIds.length > 0 ? { commission_ids: loadedCommissionIds } : {}),
     });
 
     if (success) {
@@ -337,6 +392,7 @@ export default function AdminSupplierOrderForm({
           reservationSellerValue: createDefaultSaleSellerValue(currentUserId),
         },
       ]);
+      setLoadedCommissionIds([]);
     }
   };
 
@@ -419,16 +475,27 @@ export default function AdminSupplierOrderForm({
         />
 
         <Box display="flex" direction="col" gap="3" align="stretch" className="w-full min-w-0">
-          <Box display="flex" className="items-center justify-between gap-4">
+          <Box display="flex" className="items-center justify-between gap-4 flex-wrap">
             <Typography variant="h3">Ítems</Typography>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={addLineItem}
-              disabled={isSubmitting}
-            >
-              Agregar ítem
-            </Button>
+            <Box display="flex" gap="2" className="flex-wrap">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={loadPendingCommissions}
+                disabled={isSubmitting || remainingPendingCommissionsCount === 0}
+              >
+                Cargar encargos pendientes
+                {pendingCommissionsCount > 0 ? ` (${remainingPendingCommissionsCount})` : ""}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addLineItem}
+                disabled={isSubmitting}
+              >
+                Agregar ítem
+              </Button>
+            </Box>
           </Box>
 
           {lineItems.map((item) => (

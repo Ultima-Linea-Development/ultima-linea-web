@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   ensureIndexes,
+  getCommissionsCollection,
   getExternalSellersCollection,
   getProductsCollection,
   getSupplierOrdersCollection,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/server/db";
 import {
   ExternalSellerDocument,
+  CommissionDocument,
   ProductDocument,
   SupplierDocument,
   SupplierOrder,
@@ -39,6 +41,7 @@ import {
   applyLineItemReservations,
   syncProductReservationsFromItems,
 } from "@/lib/server/product-reservation";
+import { markCommissionsExportedForOrder, validateCommissionsForOrderExport } from "@/lib/server/commissions";
 
 import { parseSaleDateInput } from "@/lib/sale-date";
 
@@ -62,6 +65,7 @@ type CreateSupplierOrderBody = {
   sent_at?: string;
   received_at?: string;
   items?: SupplierOrderLineItemInput[];
+  commission_ids?: string[];
 };
 
 function trimOptional(value?: string): string | undefined {
@@ -170,6 +174,18 @@ export async function POST(request: NextRequest) {
       createdAt = parsedOrderDate;
     }
 
+    const commissionIds = Array.isArray(body.commission_ids)
+      ? body.commission_ids.map((id) => id.trim()).filter(Boolean)
+      : [];
+
+    if (commissionIds.length > 0) {
+      const commissions = await getCommissionsCollection<CommissionDocument>();
+      const validationError = await validateCommissionsForOrderExport(commissions, commissionIds);
+      if (validationError) {
+        return jsonError(validationError.error, 409);
+      }
+    }
+
     const order: SupplierOrder = {
       id: generateULID(),
       name,
@@ -202,6 +218,21 @@ export async function POST(request: NextRequest) {
     const products = await getProductsCollection<ProductDocument>();
     await collection.insertOne(supplierOrderToDoc(order));
     await syncProductReservationsFromItems(products, reservationResult.items);
+
+    if (commissionIds.length > 0) {
+      const commissions = await getCommissionsCollection<CommissionDocument>();
+      const exportResult = await markCommissionsExportedForOrder(
+        commissions,
+        commissionIds,
+        order
+      );
+
+      if ("error" in exportResult) {
+        await collection.deleteOne({ _id: order.id });
+        return jsonError(exportResult.error, 409);
+      }
+    }
+
     await trackAdminAction({
       auth,
       action: "create",

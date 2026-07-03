@@ -1,3 +1,4 @@
+import { Collection } from "mongodb";
 import {
   Commission,
   CommissionDocument,
@@ -129,6 +130,63 @@ export function appendCommissionToSupplierOrder(
     items: [...order.items, ...commissionItemsToSupplierOrderItems(commission)],
     updated_at: new Date(),
   };
+}
+
+export async function validateCommissionsForOrderExport(
+  collection: Collection<CommissionDocument>,
+  commissionIds: string[]
+): Promise<{ error: string } | null> {
+  const uniqueIds = [...new Set(commissionIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) return null;
+
+  for (const id of uniqueIds) {
+    const commissionDoc = await collection.findOne({ _id: id });
+    if (!commissionDoc) {
+      return { error: "Uno de los encargos seleccionados no existe" };
+    }
+
+    const commission = normalizeCommissionForResponse(commissionDoc);
+    if (commission.status === "exported") {
+      return { error: `El encargo de ${commission.customer_name} ya fue exportado` };
+    }
+
+    if (commission.status === "cancelled") {
+      return { error: `El encargo de ${commission.customer_name} está cancelado` };
+    }
+  }
+
+  return null;
+}
+
+export async function markCommissionsExportedForOrder(
+  collection: Collection<CommissionDocument>,
+  commissionIds: string[],
+  order: Pick<SupplierOrder, "id" | "name">
+): Promise<{ error: string } | { updated: number }> {
+  const uniqueIds = [...new Set(commissionIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return { updated: 0 };
+  }
+
+  const validationError = await validateCommissionsForOrderExport(collection, uniqueIds);
+  if (validationError) {
+    return validationError;
+  }
+
+  const now = new Date();
+  const result = await collection.updateMany(
+    { _id: { $in: uniqueIds }, status: "pending" },
+    {
+      $set: {
+        status: "exported",
+        supplier_order_id: order.id,
+        supplier_order_name: order.name,
+        updated_at: now,
+      },
+    }
+  );
+
+  return { updated: result.modifiedCount };
 }
 
 export function buildDefaultCommissionName(customerName: string): string {

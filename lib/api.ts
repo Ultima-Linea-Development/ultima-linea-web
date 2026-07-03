@@ -443,6 +443,7 @@ export type CreateSupplierOrderRequest = {
   sent_at?: string;
   received_at?: string;
   items: CreateSupplierOrderItemRequest[];
+  commission_ids?: string[];
 };
 
 export type UpdateSupplierOrderRequest = Partial<CreateSupplierOrderRequest>;
@@ -948,10 +949,11 @@ export const adminOrdersApi = {
 };
 
 export const adminCommissionsApi = {
-  getAll: (token: string, filters?: { page?: number; per_page?: number }) => {
+  getAll: (token: string, filters?: { page?: number; per_page?: number; status?: CommissionStatus }) => {
     const params = new URLSearchParams();
     if (filters?.page != null) params.append("page", String(filters.page));
     if (filters?.per_page != null) params.append("per_page", String(filters.per_page));
+    if (filters?.status) params.append("status", filters.status);
 
     const query = params.toString();
     return api.get<PaginatedCommissionsResponse>(
