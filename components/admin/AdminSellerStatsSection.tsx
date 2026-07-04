@@ -5,10 +5,10 @@ import Typography from "@/components/ui/Typography";
 import AdminStatCard from "@/components/admin/AdminStatCard";
 import AdminStatsBarChart from "@/components/admin/charts/AdminStatsBarChart";
 import AdminStatsPieChart from "@/components/admin/charts/AdminStatsPieChart";
-import AdminStatsTable from "@/components/admin/AdminStatsTable";
 import AdminStatsPanelGrid from "@/components/admin/AdminStatsPanelGrid";
+import AdminStatsSkeleton from "@/components/admin/AdminStatsSkeleton";
+import AdminStatsTable from "@/components/admin/AdminStatsTable";
 import { ADMIN_TABLE_CELL_CLASS } from "@/components/admin/AdminTable";
-import Spinner from "@/components/ui/Spinner";
 import type { AdminSellerStats } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { mapToChartData } from "@/lib/admin-chart-data";
@@ -25,11 +25,7 @@ export default function AdminSellerStatsSection({
   error = "",
 }: AdminSellerStatsSectionProps) {
   if (isLoading) {
-    return (
-      <Box display="flex" className="min-h-[6rem] items-center justify-center">
-        <Spinner fullscreen={false} />
-      </Box>
-    );
+    return <AdminStatsSkeleton tab="sellers" />;
   }
 
   if (error) {

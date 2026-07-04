@@ -8,8 +8,8 @@ import AdminCatalogStatsSection from "@/components/admin/AdminCatalogStatsSectio
 import AdminOperationsStatsSection from "@/components/admin/AdminOperationsStatsSection";
 import AdminSalesStatsSection from "@/components/admin/AdminSalesStatsSection";
 import AdminSellerStatsSection from "@/components/admin/AdminSellerStatsSection";
+import AdminStatsSkeleton from "@/components/admin/AdminStatsSkeleton";
 import AdminStatsTabNav from "@/components/admin/AdminStatsTabNav";
-import Spinner from "@/components/ui/Spinner";
 import { ADMIN_PAGE_PADDING_CLASS } from "@/components/admin/AdminTable";
 import {
   parseAdminStatsTabId,
@@ -22,9 +22,9 @@ export default function AdminStatsPage() {
   return (
     <Suspense
       fallback={
-        <Box display="flex" className="min-h-[12rem] items-center justify-center">
-          <Spinner fullscreen={false} />
-        </Box>
+        <div className={ADMIN_PAGE_PADDING_CLASS}>
+          <AdminStatsSkeleton tab="catalog" />
+        </div>
       }
     >
       <AdminStatsPageContent />
@@ -86,9 +86,9 @@ function AdminStatsPageContent() {
       </div>
 
       {isLoading && !stats ? (
-        <Box display="flex" className="min-h-[12rem] items-center justify-center">
-          <Spinner fullscreen={false} />
-        </Box>
+        <div className={ADMIN_PAGE_PADDING_CLASS}>
+          <AdminStatsSkeleton tab={activeTab} />
+        </div>
       ) : error && !stats ? (
         <div className={ADMIN_PAGE_PADDING_CLASS}>
           <Typography variant="body2" color="destructive">

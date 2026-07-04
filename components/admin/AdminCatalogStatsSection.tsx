@@ -6,9 +6,9 @@ import AdminStatCard from "@/components/admin/AdminStatCard";
 import AdminStatsBarChart from "@/components/admin/charts/AdminStatsBarChart";
 import AdminStatsPieChart from "@/components/admin/charts/AdminStatsPieChart";
 import AdminStatsTable from "@/components/admin/AdminStatsTable";
+import AdminStatsSkeleton from "@/components/admin/AdminStatsSkeleton";
 import AdminStatsPanelGrid from "@/components/admin/AdminStatsPanelGrid";
 import { ADMIN_TABLE_CELL_CLASS } from "@/components/admin/AdminTable";
-import Spinner from "@/components/ui/Spinner";
 import type { AdminCatalogStats } from "@/lib/api";
 import { recordToChartData } from "@/lib/admin-chart-data";
 import { getAdminProductTypeLabel } from "@/lib/admin-stats-display";
@@ -65,11 +65,7 @@ export default function AdminCatalogStatsSection({
   ] as const;
 
   if (isLoading) {
-    return (
-      <Box display="flex" className="min-h-[6rem] items-center justify-center">
-        <Spinner fullscreen={false} />
-      </Box>
-    );
+    return <AdminStatsSkeleton tab="catalog" />;
   }
 
   if (error) {

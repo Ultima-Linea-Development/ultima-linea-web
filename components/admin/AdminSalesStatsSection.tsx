@@ -4,10 +4,10 @@ import Box from "@/components/layout/Box";
 import Typography from "@/components/ui/Typography";
 import AdminStatCard from "@/components/admin/AdminStatCard";
 import AdminStatsBarChart from "@/components/admin/charts/AdminStatsBarChart";
-import AdminStatsTable from "@/components/admin/AdminStatsTable";
 import AdminStatsPanelGrid from "@/components/admin/AdminStatsPanelGrid";
+import AdminStatsSkeleton from "@/components/admin/AdminStatsSkeleton";
+import AdminStatsTable from "@/components/admin/AdminStatsTable";
 import { ADMIN_TABLE_CELL_CLASS } from "@/components/admin/AdminTable";
-import Spinner from "@/components/ui/Spinner";
 import type { AdminSalesStats } from "@/lib/api";
 import {
   ADMIN_STATS_PERIOD_LABELS,
@@ -37,11 +37,7 @@ export default function AdminSalesStatsSection({
     : [];
 
   if (isLoading) {
-    return (
-      <Box display="flex" className="min-h-[6rem] items-center justify-center">
-        <Spinner fullscreen={false} />
-      </Box>
-    );
+    return <AdminStatsSkeleton tab="sales" />;
   }
 
   if (error) {
