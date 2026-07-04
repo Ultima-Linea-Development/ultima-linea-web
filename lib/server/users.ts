@@ -47,6 +47,31 @@ export async function getAssignableStaffUsers(): Promise<AssignableUser[]> {
   }));
 }
 
+export async function getUsersByIds(ids: string[]): Promise<AssignableUser[]> {
+  const uniqueIds = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+
+  const collection = await getUsersCollection<UserDocument>();
+  const docs = await collection
+    .find({ _id: { $in: uniqueIds } })
+    .project({
+      _id: 1,
+      email: 1,
+      first_name: 1,
+      last_name: 1,
+      role: 1,
+    })
+    .toArray();
+
+  return docs.map((doc) => ({
+    id: doc._id,
+    email: doc.email,
+    first_name: doc.first_name,
+    last_name: doc.last_name,
+    role: doc.role,
+  }));
+}
+
 export async function isAssignableStaffUser(userId: string): Promise<boolean> {
   const collection = await getUsersCollection<UserDocument>();
   const doc = await collection.findOne({ _id: userId });

@@ -235,6 +235,85 @@ export type PaginatedAdminHistoryResponse = {
   total_pages: number;
 };
 
+export type AdminCatalogStats = {
+  products: {
+    total: number;
+    active: number;
+    inactive: number;
+  };
+  units: {
+    total: number;
+    active: number;
+    inactive: number;
+    by_size: Record<string, number>;
+    by_type: Record<string, number>;
+  };
+};
+
+export type AdminStatsPeriodKey = "all_time" | "last_7_days" | "last_30_days" | "this_month";
+
+export type AdminSalesPeriodStats = {
+  sales_count: number;
+  revenue: number;
+  units: number;
+  average_ticket: number;
+};
+
+export type AdminSalesStats = {
+  periods: Record<AdminStatsPeriodKey, AdminSalesPeriodStats>;
+};
+
+export type AdminSellerTypeSummary = {
+  sellers_count: number;
+  sales_count: number;
+  revenue: number;
+  units: number;
+};
+
+export type AdminSellerRankingEntry = {
+  seller_type: "internal" | "external";
+  seller_id: string;
+  seller_name: string;
+  sales_count: number;
+  revenue: number;
+  units: number;
+};
+
+export type AdminSellerStats = {
+  internal: AdminSellerTypeSummary;
+  external: AdminSellerTypeSummary;
+  ranking: AdminSellerRankingEntry[];
+};
+
+export type AdminOperationsStatusStats = {
+  count: number;
+  estimated_total: number;
+};
+
+export type AdminOperationsStats = {
+  commissions: {
+    by_status: Record<CommissionStatus, AdminOperationsStatusStats>;
+    pending: AdminOperationsStatusStats;
+    in_progress: AdminOperationsStatusStats;
+  };
+  orders: {
+    by_status: Record<SupplierOrderStatus, AdminOperationsStatusStats>;
+    pending: AdminOperationsStatusStats;
+    in_progress: AdminOperationsStatusStats;
+  };
+  summary: {
+    pending: AdminOperationsStatusStats;
+    in_progress: AdminOperationsStatusStats;
+  };
+};
+
+export type AdminStats = {
+  catalog: AdminCatalogStats;
+  sales: AdminSalesStats;
+  sellers: AdminSellerStats;
+  operations: AdminOperationsStats;
+};
+
 export type AdminSalesSearchResponse = {
   query: string;
   total: number;
@@ -996,6 +1075,13 @@ export const adminSuppliersApi = {
 
   update: (id: string, supplier: UpdateSupplierRequest, token: string) =>
     api.put<{ supplier: Supplier }>(`/admin/suppliers/${id}`, supplier, token),
+};
+
+export const adminStatsApi = {
+  getAll: (token: string) => api.get<AdminStats>("/admin/stats", token),
+
+  getCatalog: (token: string) =>
+    api.get<AdminCatalogStats>("/admin/stats/catalog", token),
 };
 
 export const healthApi = {

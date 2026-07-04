@@ -9,7 +9,6 @@ import {
   requireAuth,
 } from "@/lib/server/auth-middleware";
 
-/** @deprecated Prefer /api/admin/stats/catalog */
 export async function GET(request: NextRequest) {
   const auth = requireStaff(requireAuth(request));
   if (isNextResponse(auth)) return auth;
@@ -20,14 +19,8 @@ export async function GET(request: NextRequest) {
     const collection = await getProductsCollection<ProductDocument>();
     const stats = await getAdminCatalogStats(collection);
 
-    return NextResponse.json({
-      by_type: stats.units.by_type,
-      by_size: stats.units.by_size,
-      by_type_and_size: {},
-      total_units: stats.units.active,
-      product_count: stats.products.total,
-    });
+    return NextResponse.json(stats);
   } catch {
-    return jsonError("Failed to aggregate stock by type", 500);
+    return jsonError("Failed to fetch catalog stats", 500);
   }
 }

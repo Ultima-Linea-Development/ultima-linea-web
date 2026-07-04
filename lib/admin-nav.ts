@@ -13,6 +13,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: "/admin/sales", label: "Ventas", icon: "sales" },
   { href: "/admin/orders", label: "Pedidos", icon: "orders" },
   { href: "/admin/commissions", label: "Encargos", icon: "commissions" },
+  { href: "/admin/stats", label: "Estadísticas", icon: "stats" },
   { href: "/admin/history", label: "Historial", icon: "history" },
   { href: "/admin/users", label: "Usuarios", icon: "users", adminOnly: true },
 ];

@@ -30,6 +30,7 @@ import {
   MdOutlineHistory,
   MdOutlineUndo,
   MdOutlinePerson,
+  MdOutlineBarChart,
 } from "react-icons/md";
 import { ComponentProps } from "react";
 
@@ -62,6 +63,7 @@ export const Icons = {
   pending: MdOutlineSchedule,
   info: MdOutlineInfo,
   history: MdOutlineHistory,
+  stats: MdOutlineBarChart,
   rollback: MdOutlineUndo,
   profile: MdOutlinePerson,
 } as const;
