@@ -343,6 +343,17 @@ export default function AdminSaleEditForm({
         }
       />
 
+      <Box display="flex" gap="2" className="flex-wrap">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Guardando..." : "Guardar cambios"}
+        </Button>
+        {onCancel && (
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+        )}
+      </Box>
+
       <Box display="flex" direction="col" align="stretch" gap="3" className="w-full min-w-0">
         <Typography variant="body2">Productos en la venta</Typography>
         {lineItems.map((item) => (
