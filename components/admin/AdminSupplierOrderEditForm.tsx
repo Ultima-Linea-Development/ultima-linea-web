@@ -482,6 +482,17 @@ export default function AdminSupplierOrderEditForm({
           disabled={isSubmitting}
         />
 
+        <Box display="flex" gap="3" className="justify-end flex-wrap">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+              Cancelar
+            </Button>
+          )}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Guardando..." : "Guardar cambios"}
+          </Button>
+        </Box>
+
         <Box display="flex" direction="col" gap="3" align="stretch" className="w-full min-w-0">
           <Box display="flex" className="items-center justify-between gap-4">
             <Typography variant="h3">Ítems</Typography>
@@ -553,17 +564,6 @@ export default function AdminSupplierOrderEditForm({
               </FormField>
             </div>
           </div>
-        </Box>
-
-        <Box display="flex" gap="3" className="justify-end flex-wrap">
-          {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-              Cancelar
-            </Button>
-          )}
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Guardando..." : "Guardar cambios"}
-          </Button>
         </Box>
       </Box>
     </Form>
