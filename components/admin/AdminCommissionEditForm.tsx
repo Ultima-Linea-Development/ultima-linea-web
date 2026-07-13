@@ -458,6 +458,27 @@ export default function AdminCommissionEditForm({
         <Typography variant="body" className="text-right">
           Total estimado: {formatPrice(commissionTotal)}
         </Typography>
+
+        {!isReadOnly ? (
+          <Box display="flex" gap="3" className="justify-end flex-wrap">
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+                Cancelar
+              </Button>
+            )}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </Box>
+        ) : (
+          <Box display="flex" gap="3" className="justify-end flex-wrap">
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cerrar
+              </Button>
+            )}
+          </Box>
+        )}
       </Box>
     </Form>
   );

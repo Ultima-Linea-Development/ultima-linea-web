@@ -565,6 +565,17 @@ export default function AdminSupplierOrderEditForm({
             </div>
           </div>
         </Box>
+
+        <Box display="flex" gap="3" className="justify-end flex-wrap">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+              Cancelar
+            </Button>
+          )}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Guardando..." : "Guardar cambios"}
+          </Button>
+        </Box>
       </Box>
     </Form>
   );

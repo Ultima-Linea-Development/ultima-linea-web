@@ -451,6 +451,17 @@ export default function AdminSaleEditForm({
           </Typography>
         </InlineAlert>
       )}
+
+      <Box display="flex" gap="2" className="flex-wrap">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Guardando..." : "Guardar cambios"}
+        </Button>
+        {onCancel && (
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+        )}
+      </Box>
     </Form>
   );
 }
