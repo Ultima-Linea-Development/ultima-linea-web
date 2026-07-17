@@ -92,15 +92,30 @@ export function isProductReserved(
 }
 
 export function isSizeReserved(product: ProductReservationSource, size: string): boolean {
+  return getReservedQuantityForSize(product, size) > 0;
+}
+
+export function getReservedQuantityForSize(
+  product: ProductReservationSource,
+  size: string
+): number {
   const trimmedSize = size.trim();
-  if (!trimmedSize) return false;
+  if (!trimmedSize) return 0;
 
   const entries = getCatalogReservationEntries(product);
   if (entries.length > 0) {
-    return entries.some(({ size: reservedSize }) => sizesMatch(reservedSize, trimmedSize));
+    return entries
+      .filter((entry) => sizesMatch(entry.size, trimmedSize))
+      .reduce((sum, entry) => sum + entry.quantity, 0);
   }
 
-  return hasLegacyProductReservation(product);
+  if (!hasLegacyProductReservation(product)) return 0;
+
+  const stockBySizes = product.stock_by_sizes ?? {};
+  const matchedStock = Object.entries(stockBySizes).find(([stockSize]) =>
+    sizesMatch(stockSize, trimmedSize)
+  );
+  return matchedStock?.[1] ?? 0;
 }
 
 export function getProductReservationLabel(
@@ -183,7 +198,8 @@ export function getProductReservationBadgeText(
     const sizesLabel = entries
       .map((entry) => formatReservationSizeLabel(entry.size, entry.quantity))
       .join(", ");
-    const label = `Reservado para ${sellerLabel} · ${sizesLabel}`;
+    const reservedWord = entries.length === 1 ? "reservado" : "reservados";
+    const label = `${sizesLabel} ${reservedWord} · ${sellerLabel}`;
     return { label, title: label };
   }
 
@@ -193,7 +209,7 @@ export function getProductReservationBadgeText(
       return `${formatReservationSizeLabel(entry.size, entry.quantity)}: ${sellerLabel}`;
     })
     .join(" · ");
-  const label = `Reservado · ${detail}`;
+  const label = `Reservados · ${detail}`;
 
   return { label, title: label };
 }

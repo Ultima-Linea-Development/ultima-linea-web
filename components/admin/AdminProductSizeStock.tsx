@@ -8,7 +8,7 @@ import {
   getProductStockEntries,
   getProductTotalStock,
 } from "@/lib/product-inventory";
-import { isSizeReserved } from "@/lib/product-reservation";
+import { getReservedQuantityForSize } from "@/lib/product-reservation";
 import { cn } from "@/lib/utils";
 
 const VISIBLE_SIZE_LIMIT = 4;
@@ -63,8 +63,8 @@ export default function AdminProductSizeStock({
           key={size}
           size={size}
           stock={stock}
+          reservedQuantity={getReservedQuantityForSize(product, size)}
           highlighted={highlightSize === size}
-          reserved={isSizeReserved(product, size)}
         />
       ))}
 
@@ -86,8 +86,8 @@ export default function AdminProductSizeStock({
                 key={size}
                 size={size}
                 stock={stock}
+                reservedQuantity={getReservedQuantityForSize(product, size)}
                 highlighted={highlightSize === size}
-                reserved={isSizeReserved(product, size)}
               />
             ))}
           </div>

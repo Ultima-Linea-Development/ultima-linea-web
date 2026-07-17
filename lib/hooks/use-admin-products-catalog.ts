@@ -16,10 +16,17 @@ import {
 import { filterProductsByQuery } from "@/lib/admin-product-search";
 import { useAdminSearch } from "@/lib/hooks/use-admin-search";
 import { usePendingDelete } from "@/lib/use-pending-delete";
+import type { CatalogStatusFilter } from "@/components/admin/AdminCatalogStatusLinks";
 
 type ProductsListData = NonNullable<
   Awaited<ReturnType<typeof adminProductsApi.getAll>>["data"]
 >;
+
+function activeFilterToStatus(activeFilter: string): CatalogStatusFilter {
+  if (activeFilter === "false") return "inactive";
+  if (activeFilter === "in_stock") return "in_stock";
+  return "all";
+}
 
 export function useAdminProductsCatalog() {
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -31,6 +38,7 @@ export function useAdminProductsCatalog() {
   const [activeFilter, setActiveFilter] = useState("");
   const [todoCount, setTodoCount] = useState(0);
   const [inactiveCount, setInactiveCount] = useState(0);
+  const [inStockCount, setInStockCount] = useState(0);
   const [sizeOptions, setSizeOptions] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
@@ -69,19 +77,22 @@ export function useAdminProductsCatalog() {
   const catalogFilters = {
     ...(sizeFilter ? { size: sizeFilter } : {}),
     ...(activeFilter === "false" ? { is_active: false } : {}),
+    ...(activeFilter === "in_stock" ? { in_stock: true } : {}),
   };
 
   const refreshStatusCounts = useCallback(async () => {
     const token = getToken();
     if (!token) return;
 
-    const [allResponse, inactiveResponse] = await Promise.all([
+    const [allResponse, inactiveResponse, inStockResponse] = await Promise.all([
       adminProductsApi.getAll(token, { page: 1, per_page: 1 }),
       adminProductsApi.getAll(token, { page: 1, per_page: 1, is_active: false }),
+      adminProductsApi.getAll(token, { page: 1, per_page: 1, in_stock: true }),
     ]);
 
     if (allResponse.data) setTodoCount(allResponse.data.total);
     if (inactiveResponse.data) setInactiveCount(inactiveResponse.data.total);
+    if (inStockResponse.data) setInStockCount(inStockResponse.data.total);
   }, []);
 
   const loadCatalog = useCallback(async () => {
@@ -207,6 +218,10 @@ export function useAdminProductsCatalog() {
 
   const showTodoProducts = useCallback(() => {
     handleActiveFilterChange("");
+  }, [handleActiveFilterChange]);
+
+  const showInStockProducts = useCallback(() => {
+    handleActiveFilterChange("in_stock");
   }, [handleActiveFilterChange]);
 
   const handleDeactivate = useCallback(
@@ -413,10 +428,13 @@ export function useAdminProductsCatalog() {
     setBulkConfirmIds,
     sizeFilter,
     activeFilter,
+    statusFilter: activeFilterToStatus(activeFilter),
     todoCount,
     inactiveCount,
+    inStockCount,
     showInactiveProducts,
     showTodoProducts,
+    showInStockProducts,
     sizeOptions,
     assignableUsers,
     externalSellers,

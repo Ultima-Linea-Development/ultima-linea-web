@@ -180,6 +180,7 @@ export type ProductFilters = {
   season?: string;
   type?: "fan" | "player" | "retro";
   is_active?: boolean;
+  in_stock?: boolean;
   deleted?: boolean;
   page?: number;
   per_page?: number;
@@ -187,7 +188,7 @@ export type ProductFilters = {
 
 export type AdminProductSearchFilters = Pick<
   ProductFilters,
-  "size" | "league" | "is_active"
+  "size" | "league" | "is_active" | "in_stock"
 >;
 
 export type PaginatedProductsResponse = {
@@ -845,6 +846,9 @@ export const adminProductsApi = {
     if (filters?.is_active !== undefined) {
       params.append("is_active", String(filters.is_active));
     }
+    if (filters?.in_stock !== undefined) {
+      params.append("in_stock", String(filters.in_stock));
+    }
     if (filters?.deleted !== undefined) {
       params.append("deleted", String(filters.deleted));
     }
@@ -869,6 +873,9 @@ export const adminProductsApi = {
     if (filters?.league) params.append("league", filters.league);
     if (filters?.is_active !== undefined) {
       params.append("is_active", String(filters.is_active));
+    }
+    if (filters?.in_stock !== undefined) {
+      params.append("in_stock", String(filters.in_stock));
     }
     if (filters?.deleted !== undefined) {
       params.append("deleted", String(filters.deleted));

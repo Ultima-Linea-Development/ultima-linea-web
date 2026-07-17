@@ -104,9 +104,11 @@ export default function AdminProductsPage() {
         <AdminCatalogStatusLinks
           todoCount={catalog.todoCount}
           inactiveCount={catalog.inactiveCount}
-          showInactive={catalog.activeFilter === "false"}
+          inStockCount={catalog.inStockCount}
+          statusFilter={catalog.statusFilter}
           onShowTodo={catalog.showTodoProducts}
           onShowInactive={catalog.showInactiveProducts}
+          onShowInStock={catalog.showInStockProducts}
         />
       </Box>
 
@@ -202,7 +204,7 @@ export default function AdminProductsPage() {
       />
 
       {edit.editingProductId && (
-        <Modal open={!!edit.editingProductId} onClose={edit.handleCancelEdit} title={edit.focusReservation ? "Reservar producto" : "Editar producto"}>
+        <Modal open={!!edit.editingProductId} onClose={edit.handleCancelEdit} title={edit.focusReservation ? "Reservar producto" : "Editar producto"} className="max-w-2xl">
           {edit.isLoadingProduct ? (
             <Box display="flex" className="min-h-[200px] items-center justify-center">
               <Spinner fullscreen={false} />
