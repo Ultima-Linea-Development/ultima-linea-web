@@ -33,6 +33,7 @@ export default function AdminShell({ children }: AdminShellProps) {
               <AdminNavLink
                 key={item.href}
                 href={item.href}
+                label={item.label}
                 icon={<Icon name={item.icon} className="size-5" />}
               >
                 {item.label}
@@ -48,11 +49,12 @@ export default function AdminShell({ children }: AdminShellProps) {
       <AdminMainContent>{children}</AdminMainContent>
 
       <aside className={ADMIN_SHELL_MOBILE_BAR_CLASS}>
-        <nav className="flex flex-row items-center justify-around gap-1 w-full [&>a]:flex-1 [&>a]:justify-center [&>a]:text-center [&>a]:min-w-0 [&>a]:py-2 [&>a]:!text-center">
+        <nav className="flex flex-row items-center justify-around gap-0.5 w-full [&>a]:flex-1 [&>a]:justify-center [&>a]:min-w-0 [&>a]:py-2">
           {navItems.map((item) => (
             <AdminNavLink
               key={item.href}
               href={item.href}
+              label={item.label}
               icon={<Icon name={item.icon} className="size-5" />}
             >
               {item.label}

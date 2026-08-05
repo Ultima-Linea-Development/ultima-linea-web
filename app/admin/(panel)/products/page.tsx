@@ -105,10 +105,14 @@ export default function AdminProductsPage() {
           todoCount={catalog.todoCount}
           inactiveCount={catalog.inactiveCount}
           inStockCount={catalog.inStockCount}
+          outOfStockCount={catalog.outOfStockCount}
+          reservedCount={catalog.reservedCount}
           statusFilter={catalog.statusFilter}
           onShowTodo={catalog.showTodoProducts}
           onShowInactive={catalog.showInactiveProducts}
           onShowInStock={catalog.showInStockProducts}
+          onShowOutOfStock={catalog.showOutOfStockProducts}
+          onShowReserved={catalog.showReservedProducts}
         />
       </Box>
 

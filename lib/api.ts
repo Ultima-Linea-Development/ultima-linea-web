@@ -181,6 +181,7 @@ export type ProductFilters = {
   type?: "fan" | "player" | "retro";
   is_active?: boolean;
   in_stock?: boolean;
+  reserved?: boolean;
   deleted?: boolean;
   page?: number;
   per_page?: number;
@@ -188,7 +189,7 @@ export type ProductFilters = {
 
 export type AdminProductSearchFilters = Pick<
   ProductFilters,
-  "size" | "league" | "is_active" | "in_stock"
+  "size" | "league" | "is_active" | "in_stock" | "reserved" | "page" | "per_page"
 >;
 
 export type PaginatedProductsResponse = {
@@ -849,6 +850,9 @@ export const adminProductsApi = {
     if (filters?.in_stock !== undefined) {
       params.append("in_stock", String(filters.in_stock));
     }
+    if (filters?.reserved !== undefined) {
+      params.append("reserved", String(filters.reserved));
+    }
     if (filters?.deleted !== undefined) {
       params.append("deleted", String(filters.deleted));
     }
@@ -877,9 +881,14 @@ export const adminProductsApi = {
     if (filters?.in_stock !== undefined) {
       params.append("in_stock", String(filters.in_stock));
     }
+    if (filters?.reserved !== undefined) {
+      params.append("reserved", String(filters.reserved));
+    }
     if (filters?.deleted !== undefined) {
       params.append("deleted", String(filters.deleted));
     }
+    if (filters?.page != null) params.append("page", String(filters.page));
+    if (filters?.per_page != null) params.append("per_page", String(filters.per_page));
     return api.get<SearchResponse>(`/admin/products/search?${params.toString()}`, token);
   },
 

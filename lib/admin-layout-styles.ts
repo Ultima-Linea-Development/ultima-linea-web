@@ -21,7 +21,7 @@ export const ADMIN_SHELL_MOBILE_BAR_CLASS = cn(
 );
 
 export const ADMIN_NAV_LINK_LAYOUT_CLASS =
-  "flex w-full flex-col items-center gap-1 px-2 py-2 text-xs font-medium lg:flex-row lg:items-center lg:justify-start lg:gap-3 lg:px-3 lg:text-left lg:text-sm";
+  "flex w-full flex-col items-center justify-center gap-0 px-1 py-2 text-xs font-medium lg:flex-row lg:items-center lg:justify-start lg:gap-3 lg:px-3 lg:text-left lg:text-sm";
 
 export const ADMIN_MAIN_CONTENT_CLASS = cn(
   "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pt-4 sm:pt-6",

@@ -25,6 +25,8 @@ type ProductsListData = NonNullable<
 function activeFilterToStatus(activeFilter: string): CatalogStatusFilter {
   if (activeFilter === "false") return "inactive";
   if (activeFilter === "in_stock") return "in_stock";
+  if (activeFilter === "out_of_stock") return "out_of_stock";
+  if (activeFilter === "reserved") return "reserved";
   return "all";
 }
 
@@ -39,6 +41,8 @@ export function useAdminProductsCatalog() {
   const [todoCount, setTodoCount] = useState(0);
   const [inactiveCount, setInactiveCount] = useState(0);
   const [inStockCount, setInStockCount] = useState(0);
+  const [outOfStockCount, setOutOfStockCount] = useState(0);
+  const [reservedCount, setReservedCount] = useState(0);
   const [sizeOptions, setSizeOptions] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
@@ -64,7 +68,6 @@ export function useAdminProductsCatalog() {
     searchQuery,
     searchTick,
     searchSuggestions,
-    searchCacheRef,
     applySearchFromQuery,
     clearSearch,
     bumpSearch,
@@ -78,21 +81,28 @@ export function useAdminProductsCatalog() {
     ...(sizeFilter ? { size: sizeFilter } : {}),
     ...(activeFilter === "false" ? { is_active: false } : {}),
     ...(activeFilter === "in_stock" ? { in_stock: true } : {}),
+    ...(activeFilter === "out_of_stock" ? { in_stock: false } : {}),
+    ...(activeFilter === "reserved" ? { reserved: true } : {}),
   };
 
   const refreshStatusCounts = useCallback(async () => {
     const token = getToken();
     if (!token) return;
 
-    const [allResponse, inactiveResponse, inStockResponse] = await Promise.all([
-      adminProductsApi.getAll(token, { page: 1, per_page: 1 }),
-      adminProductsApi.getAll(token, { page: 1, per_page: 1, is_active: false }),
-      adminProductsApi.getAll(token, { page: 1, per_page: 1, in_stock: true }),
-    ]);
+    const [allResponse, inactiveResponse, inStockResponse, outOfStockResponse, reservedResponse] =
+      await Promise.all([
+        adminProductsApi.getAll(token, { page: 1, per_page: 1 }),
+        adminProductsApi.getAll(token, { page: 1, per_page: 1, is_active: false }),
+        adminProductsApi.getAll(token, { page: 1, per_page: 1, in_stock: true }),
+        adminProductsApi.getAll(token, { page: 1, per_page: 1, in_stock: false }),
+        adminProductsApi.getAll(token, { page: 1, per_page: 1, reserved: true }),
+      ]);
 
     if (allResponse.data) setTodoCount(allResponse.data.total);
     if (inactiveResponse.data) setInactiveCount(inactiveResponse.data.total);
     if (inStockResponse.data) setInStockCount(inStockResponse.data.total);
+    if (outOfStockResponse.data) setOutOfStockCount(outOfStockResponse.data.total);
+    if (reservedResponse.data) setReservedCount(reservedResponse.data.total);
   }, []);
 
   const loadCatalog = useCallback(async () => {
@@ -123,36 +133,37 @@ export function useAdminProductsCatalog() {
         return;
       }
 
-      let all = searchCacheRef.current?.query === q ? searchCacheRef.current.results : null;
-      if (!all) {
-        const response = await adminProductsApi.search(token, q, catalogFilters);
-        if (response.error || !response.data) {
-          setError(response.error ?? "Error al buscar");
-          setProducts(undefined);
-          return;
-        }
-        all = response.data.results;
-        searchCacheRef.current = { query: q, results: all };
+      const response = await adminProductsApi.search(token, q, {
+        page,
+        per_page: PER_PAGE,
+        ...catalogFilters,
+      });
+      if (response.error || !response.data) {
+        setError(response.error ?? "Error al buscar");
+        setProducts(undefined);
+        return;
       }
 
-      const total = all.length;
-      const total_pages = Math.max(1, Math.ceil(total / PER_PAGE));
+      const data = response.data;
+      const total_pages = Math.max(1, data.total_pages);
       const safePage = Math.min(Math.max(1, page), total_pages);
-      const start = (safePage - 1) * PER_PAGE;
-      setProducts({
-        products: all.slice(start, start + PER_PAGE),
-        page: safePage,
-        per_page: PER_PAGE,
-        total,
-        total_pages,
-      });
+
       if (safePage !== page) {
         setPage(safePage);
+        return;
       }
+
+      setProducts({
+        products: data.results,
+        page: data.page,
+        per_page: PER_PAGE,
+        total: data.total,
+        total_pages,
+      });
     } finally {
       setIsDataLoading(false);
     }
-  }, [searchQuery, page, sizeFilter, activeFilter, flushPendingDelete, searchCacheRef]);
+  }, [searchQuery, page, sizeFilter, activeFilter, flushPendingDelete]);
 
   const refreshCatalog = useCallback(async () => {
     invalidateSearchCache();
@@ -222,6 +233,14 @@ export function useAdminProductsCatalog() {
 
   const showInStockProducts = useCallback(() => {
     handleActiveFilterChange("in_stock");
+  }, [handleActiveFilterChange]);
+
+  const showOutOfStockProducts = useCallback(() => {
+    handleActiveFilterChange("out_of_stock");
+  }, [handleActiveFilterChange]);
+
+  const showReservedProducts = useCallback(() => {
+    handleActiveFilterChange("reserved");
   }, [handleActiveFilterChange]);
 
   const handleDeactivate = useCallback(
@@ -432,9 +451,13 @@ export function useAdminProductsCatalog() {
     todoCount,
     inactiveCount,
     inStockCount,
+    outOfStockCount,
+    reservedCount,
     showInactiveProducts,
     showTodoProducts,
     showInStockProducts,
+    showOutOfStockProducts,
+    showReservedProducts,
     sizeOptions,
     assignableUsers,
     externalSellers,
