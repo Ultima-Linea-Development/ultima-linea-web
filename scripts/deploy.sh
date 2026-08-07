@@ -35,5 +35,11 @@ echo ">> Restarting containers..."
 export FRONT_IMAGE
 docker compose up -d --no-build --pull never
 
+echo ">> Pruning unused Docker images/containers/networks..."
+docker image prune -af 2>/dev/null || true
+docker container prune -f 2>/dev/null || true
+docker network prune -f 2>/dev/null || true
+df -h /
+
 echo ">> Deploy complete."
 docker compose ps
