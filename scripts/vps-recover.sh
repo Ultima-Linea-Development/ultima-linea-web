@@ -11,13 +11,14 @@ free -h
 uptime
 
 section "Detener builds colgados en el host"
-pkill -TERM -f "docker-compose compose build" 2>/dev/null || true
-pkill -TERM -f "docker compose build" 2>/dev/null || true
-pkill -TERM -f "docker-buildx bake" 2>/dev/null || true
+# [d]/[b] evita que pkill -f mate al propio script
+pkill -TERM -f "[d]ocker-compose compose build" 2>/dev/null || true
+pkill -TERM -f "[d]ocker compose build" 2>/dev/null || true
+pkill -TERM -f "[d]ocker-buildx bake" 2>/dev/null || true
 sleep 3
-pkill -KILL -f "docker-compose compose build" 2>/dev/null || true
-pkill -KILL -f "docker compose build" 2>/dev/null || true
-pkill -KILL -f "docker-buildx bake" 2>/dev/null || true
+pkill -KILL -f "[d]ocker-compose compose build" 2>/dev/null || true
+pkill -KILL -f "[d]ocker compose build" 2>/dev/null || true
+pkill -KILL -f "[d]ocker-buildx bake" 2>/dev/null || true
 
 section "Detener contenedores de build (conservar front, traefik, mongo)"
 keep_pattern='^(ultima_linea_front|traefik|.*mongo.*)$'

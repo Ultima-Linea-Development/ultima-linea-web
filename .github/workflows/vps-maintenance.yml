@@ -40,13 +40,15 @@ jobs:
           key_path: ${{ runner.temp }}/deploy_key
           timeout: 60s
           command_timeout: 18m
+          script_stop: false
           script: |
             echo ">> Emergencia: detener builds colgados antes de git pull"
-            pkill -TERM -f "docker compose build" 2>/dev/null || true
-            pkill -TERM -f "docker-buildx bake" 2>/dev/null || true
+            # [d]/[b] evita que pkill -f se mate a sí mismo (el script contiene esos strings)
+            pkill -TERM -f "[d]ocker compose build" 2>/dev/null || true
+            pkill -TERM -f "[d]ocker-buildx bake" 2>/dev/null || true
             sleep 2
-            pkill -KILL -f "docker compose build" 2>/dev/null || true
-            pkill -KILL -f "docker-buildx bake" 2>/dev/null || true
+            pkill -KILL -f "[d]ocker compose build" 2>/dev/null || true
+            pkill -KILL -f "[d]ocker-buildx bake" 2>/dev/null || true
             docker builder prune -af 2>/dev/null || true
             cd /srv/ultima-linea-front
             git fetch origin main

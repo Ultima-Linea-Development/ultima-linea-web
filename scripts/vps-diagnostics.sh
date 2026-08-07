@@ -22,8 +22,13 @@ ps aux --sort=-%mem | head -n 15
 section "Top procesos por CPU"
 ps aux --sort=-%cpu | head -n 15
 
+section "Disco: top directorios"
+du -xh --max-depth=1 /var/lib/docker 2>/dev/null | sort -hr | head -n 15 || true
+du -xh --max-depth=1 /srv 2>/dev/null | sort -hr | head -n 10 || true
+du -xh --max-depth=1 /var/log 2>/dev/null | sort -hr | head -n 10 || true
+
 section "Docker: resumen de espacio"
-timeout 30 docker system df 2>/dev/null || echo "docker system df tardó demasiado o no está disponible"
+timeout 60 docker system df 2>/dev/null || echo "docker system df tardó demasiado o no está disponible"
 
 section "Docker: contenedores"
 docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.Size}}" 2>/dev/null || true
